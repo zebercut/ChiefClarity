@@ -1,0 +1,23 @@
+INBOX
+======
+(Add new notes/tasks/answers here. Free-form is fine.)
+(Answer the Task Check-In below — just write yes/no or a short note next to each item.)
+
+
+
+TASK CHECK-IN
+=============
+(No tasks yet — run the pipeline first.)
+
+
+QUESTIONS FROM Chief Clarity
+==================
+(Chief Clarity agents write questions here during processing. You answer them in INBOX above.)
+
+- (none)
+
+
+QUESTIONS FOR Chief Clarity
+=================
+(You write questions here. Answers appear in answer.md.)
+
