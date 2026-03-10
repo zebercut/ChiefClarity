@@ -1,4 +1,4 @@
-# Chief Clarity
+   # Chief Clarity
 
 A multi-agent AI system that turns messy daily notes into a structured execution plan. Chief Clarity reads your free-form input, maps it to your goals, builds a prioritized focus dashboard, and keeps you accountable — all through plain markdown files.
 
@@ -281,4 +281,4 @@ When contributing, please:
 
 MIT License. Copyright (c) 2026. See [LICENSE](LICENSE) for details.
 
-Created and maintained by [Farzin Bahadori](https://github.com/zebercut). See [NOTICE](NOTICE) for attribution guidelines.
+Created and maintained by [Farzin](https://github.com/zebercut). See [NOTICE](NOTICE) for attribution guidelines.
