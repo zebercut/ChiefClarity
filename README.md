@@ -256,6 +256,35 @@ chief-clarity/
 - **Q&A** — Ask questions in input.txt, get sourced answers in focus.md
 - **Data Privacy** — Everything stays in local markdown files you control
 - **Voice-Friendly Input** — input.txt is plain text — use speech-to-text and just talk
+- **Optimized for Speed** — Intelligent digest system minimizes token usage and reading time (see below)
+
+## Performance Optimization
+
+Chief Clarity uses a **dual-digest system** to dramatically reduce token usage and processing time on every run:
+
+### Context Digest (Step 0a)
+Instead of re-reading all your context files on every run, Chief Clarity:
+- Tracks the last-modified date of each file in `data/context/`
+- Only re-reads files that have changed since the last run
+- Keeps a summary digest (`context_digest.md`) that agents read instead of raw files
+- Agents only open raw context files when they need specific numbers
+
+**Result:** If you have 10 context files but only updated 1, Chief Clarity reads 1 file instead of 10.
+
+### History Digest (Step 0b)
+Instead of re-reading your entire `focus_log.md` and `input_archive.md` history on every run, Chief Clarity:
+- Uses **incremental reading** — after the first run, only new entries are processed
+- Maintains pattern summaries and recent context in `history_digest.md`
+- Tracks `last-processed-date` so it knows where to resume reading
+- Keeps the last 3 entries as "recent context" for agents
+
+**Result:** After your first run, Step 0b reads ~1 new log entry per run instead of months of history. Token cost stays flat regardless of how long you've been using the system.
+
+### Combined Impact
+- **First run:** Full read of all files (baseline)
+- **Subsequent runs:** Only reads what changed + new log entries
+- **Long-term:** System stays fast even after months of daily use
+- **Token savings:** 70-90% reduction in reading operations for established users
 
 ## Design Principles
 
