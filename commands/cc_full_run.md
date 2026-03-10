@@ -2,11 +2,13 @@
 
 # Chief Clarity — System Run
 
+> **All file paths below refer to `data/` files, NOT `templates/`.** Template files are used only for initial setup — never read them during a pipeline run.
+
 Run the **Chief Clarity multi-agent pipeline** in the following order.
 
 ---
 
-## Step 0 — Context Digest
+## Step 0a — Context Digest
 
 Before running the pipeline, update the context digest so agents don't re-read unchanged files.
 
@@ -41,6 +43,64 @@ Last updated: {timestamp}
 ```
 
 If `data/context/` is empty or doesn't exist, write: `# Context Digest\n\nNo context files.`
+
+---
+
+## Step 0b — History Digest
+
+Update the history digest so agents don't re-read the full `focus_log.md` or `input_archive.md` every run. Uses **incremental reading** — after the first build, only new entries are processed.
+
+**Read:**
+- `data/history_digest.md` (if it exists — previous digest)
+
+### Focus Log
+
+1. Read `data/history_digest.md` → `## Focus Log` → `last-processed-date`
+2. **If no digest exists (first run):** read full `data/focus_log.md`, extract patterns, write digest with `last-processed-date` set to today
+3. **If digest exists:** read ONLY entries in `data/focus_log.md` dated AFTER `last-processed-date` (scan for `## YYYY-MM-DD` headers, skip past ones already processed)
+4. Merge new patterns with existing patterns in the digest. Update `last-processed-date`. Keep last 3 entries as "recent context."
+5. If no new entries found: keep digest as-is, skip re-write
+
+### Input Archive
+
+Same incremental approach for `data/input_archive.md`:
+1. Read `data/history_digest.md` → `## Input Archive` → `last-processed-date`
+2. **If first run:** read full `data/input_archive.md`, extract recurring themes, write digest
+3. **If digest exists:** read ONLY entries appended AFTER `last-processed-date`
+4. Merge new themes with existing themes. Update `last-processed-date`.
+5. If no new entries found: keep digest as-is, skip re-write
+
+**Write:**
+- `data/history_digest.md` — using the format from `templates/history_digest.md`:
+
+```
+# History Digest
+Last updated: {timestamp}
+
+## Focus Log
+- last-processed-date: {date of most recent processed entry}
+- total entries: {count}
+- patterns:
+  - {pattern 1}
+  - {pattern 2}
+- recent (last 3 runs):
+  {summary of last 3 focus_log entries}
+
+## Input Archive
+- last-processed-date: {date of most recent processed entry}
+- total entries: {count}
+- recurring themes:
+  - {theme 1}
+  - {theme 2}
+```
+
+**Result:** After first run, Step 0b reads ~1 new log entry per run instead of the entire history. Token cost stays flat regardless of how long the user has been running the system.
+
+---
+
+## Step 0c — Shared State
+
+Read `data/user_profile.md` and `data/objectives.md` ONCE here. These files rarely change and are needed by all agents. Carry their content forward through all subsequent steps — agents should reference this pre-read content rather than re-reading the files.
 
 ---
 
@@ -82,13 +142,14 @@ If `data/context/` is empty or doesn't exist, write: `# Context Digest\n\nNo con
 *Use the Focus Agent rules* (`agents/cc_focus_agent.md`).
 
 **Read:**
-- `data/user_profile.md`
+- `data/user_profile.md` (pre-read in Step 0c)
 - `data/OKR.md`
-- `data/objectives.md`
-- `data/focus_log.md`
+- `data/objectives.md` (pre-read in Step 0c)
+- `data/history_digest.md` (patterns + last 3 entries — replaces full focus_log.md and input_archive.md)
 - `data/structured_input.md`
-- `data/input_archive.md`
 - `data/context_digest.md` (context summary — do not re-read raw context files unless a question requires deeper detail from a specific file)
+
+> Only read full `data/focus_log.md` or `data/input_archive.md` if the digest lacks specific detail needed for today's analysis.
 
 **Update (ALWAYS — even if no new input):**
 - `data/focus.md` (rewrite in place — never skip, deadlines get closer every run)
@@ -103,11 +164,11 @@ If `data/context/` is empty or doesn't exist, write: `# Context Digest\n\nNo con
 *Use the Executive Agent rules* (`agents/cc_executive_agent.md`).
 
 **Read:**
-- `data/user_profile.md`
+- `data/user_profile.md` (pre-read in Step 0c)
 - `data/focus.md`
-- `data/focus_log.md`
+- `data/history_digest.md` (replaces full focus_log.md — only read full log if a question requires specific historical data not in the digest)
 - `data/OKR.md`
-- `data/objectives.md`
+- `data/objectives.md` (pre-read in Step 0c)
 - `data/structured_input.md`
 - `data/input.txt` (*QUESTIONS FOR CHIEF CLARITY* section)
 - `data/context_digest.md` (context summary — do not re-read raw context files unless a question requires deeper detail from a specific file)

@@ -11,10 +11,11 @@ You don't just score tasks — you think alongside the user, help them close the
 - `user_profile.md` (read FIRST — use the user's preferred name throughout focus.md; use their actual routine/preferences for the daily agenda, NOT hardcoded times)
 - `OKR.md`
 - `objectives.md`
-- `focus_log.md`
+- `history_digest.md` (patterns + last 3 entries from focus_log and input_archive — read this instead of the full log files)
 - `structured_input.md`
-- `input_archive.md`
 - `context_digest.md` (summarized context — read this instead of raw context files. Only read a raw file from `context/` if you need specific numbers for progress tracking or pattern detection)
+
+> Only read full `focus_log.md` or `input_archive.md` if the digest lacks specific detail needed for today's analysis.
 
 ## Updates
 
@@ -121,7 +122,7 @@ Identify *HIGH* tasks that are close to done and suggest what's needed to finish
 
 ### 9. Learn User Patterns
 
-By reading `focus_log.md` history and `input_archive.md`, detect behavioral patterns over time:
+By reading `history_digest.md` (patterns and recent entries from focus_log and input_archive), detect behavioral patterns over time:
 
 - What the user consistently works on vs. avoids
 - Tasks that keep appearing as "today's focus" but never get done (procrastination signals)
