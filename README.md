@@ -5,7 +5,9 @@ A multi-agent AI system that turns messy daily notes into a structured execution
 ## Why Chief Clarity?
 
 ### Your data stays with you
-Chief Clarity runs entirely on local markdown files. Your goals, tasks, routines, and personal notes never leave your machine. No cloud database, no SaaS account, no vendor lock-in. You own your data, period.
+Chief Clarity runs entirely on local markdown files. No cloud database, no SaaS account, no vendor lock-in. Unlike productivity apps that store your goals, habits, and priorities on their servers permanently, Chief Clarity keeps everything in a folder you control.
+
+**A note on AI and privacy:** When you use a cloud AI (Claude, GPT, Gemini), your data is sent to their servers during processing — similar to sending an email or using any cloud service. However, no company maintains a permanent copy of your data, and most AI providers do not train on API inputs. For **full privacy**, use a local model (Ollama, LLaMA, Mistral) — then your data never leaves your machine. Chief Clarity works the same either way.
 
 ### It gets better with better AI
 Chief Clarity is AI-powered but AI-agnostic. You run the pipeline through any AI assistant that can read and write files — Claude, GPT, Gemini, or a local model. The smarter the AI, the better the output: sharper prioritization, more useful suggestions, better pattern recognition. As AI models improve, your Chief Clarity improves with them — no software update needed.
@@ -96,34 +98,99 @@ It can be messy. It can have typos. It can be one line or twenty paragraphs. Chi
 
 ### Step 7 — Run the pipeline
 
-This is where the AI does the work. You need an AI assistant that can read and write files on your machine. Here are examples:
+This is where the AI does the work. You need an AI assistant that can **read and write files** on your machine. Below are setup instructions for the most common options.
 
-**Using Claude Code (recommended):**
-```bash
-# Open the Chief Clarity folder
-cd /path/to/chief-clarity
+---
 
-# Start Claude Code
-claude
+#### Option A: Claude Code (recommended)
 
-# Then tell Claude to run the pipeline:
-> run commands/cc_full_run.md
-```
+Claude Code is Anthropic's CLI tool that runs directly in your terminal with full file access. Best experience for Chief Clarity.
 
-**Using Claude with Projects (claude.ai):**
-- Upload the entire Chief Clarity folder to a Claude project
-- In the chat, type: "Run the pipeline in commands/cc_full_run.md — follow all 5 steps in order"
+**Setup:**
+1. Install: `npm install -g @anthropic-ai/claude-code`
+2. Navigate to your Chief Clarity folder:
+   ```bash
+   cd /path/to/chief-clarity
+   ```
+3. Start Claude Code:
+   ```bash
+   claude
+   ```
+4. Run the pipeline:
+   ```
+   run commands/cc_full_run.md
+   ```
 
-**Using Cursor / Windsurf / other AI coding editors:**
-- Open the Chief Clarity folder as a project
-- Open `commands/cc_full_run.md`
-- Tell the AI: "Follow this file step by step — execute all 5 steps in order, reading and writing the data files as instructed"
+Claude Code reads and writes your files directly — no uploading, no copy-pasting. It sees your entire project folder.
 
-**Using OpenAI (ChatGPT with file access):**
-- Upload the project files or connect your folder
-- Paste the contents of `commands/cc_full_run.md` and say: "Execute this pipeline on my data files, step by step"
+---
 
-After the run:
+#### Option B: Cursor / Windsurf / AI coding editors
+
+These editors have built-in AI assistants that can read and write files in your project.
+
+**Setup:**
+1. Download [Cursor](https://cursor.sh) or [Windsurf](https://codeium.com/windsurf)
+2. Open the Chief Clarity folder as a project: File → Open Folder
+3. Open `commands/cc_full_run.md` in the editor
+4. Open the AI chat panel and type:
+   ```
+   Follow commands/cc_full_run.md step by step.
+   Execute all steps in order, reading and writing the data files as instructed.
+   ```
+
+The AI can see all files in the project and will read/write them as needed.
+
+---
+
+#### Option C: Claude.ai (Projects)
+
+Use Claude's web interface with the Projects feature to give it access to your files.
+
+**Setup:**
+1. Go to [claude.ai](https://claude.ai) and create a new Project
+2. Upload all files from your Chief Clarity folder into the project (agents/, commands/, data/, templates/)
+3. In the chat, type:
+   ```
+   Run the pipeline in commands/cc_full_run.md — follow all steps in order.
+   Read and update the data files as each step instructs.
+   ```
+4. After the run, download the updated `data/focus.md` and `data/input.txt` back to your folder
+
+Note: You'll need to re-upload changed files (like `input.txt`) before each run and download results after.
+
+---
+
+#### Option D: ChatGPT (with file access)
+
+**Setup:**
+1. Open [ChatGPT](https://chat.openai.com) (Plus or Team plan for file uploads)
+2. Upload your project files or use the Code Interpreter / file upload feature
+3. Paste the contents of `commands/cc_full_run.md` into the chat and say:
+   ```
+   Execute this pipeline on my data files, step by step.
+   ```
+4. Download updated files after the run
+
+---
+
+#### Option E: Local AI (full privacy)
+
+For maximum privacy, use a local model so your data never leaves your machine.
+
+**Setup with Ollama:**
+1. Install [Ollama](https://ollama.ai)
+2. Pull a capable model: `ollama pull llama3` or `ollama pull mistral`
+3. Use a tool that connects your local model to files — for example:
+   - [Open Interpreter](https://github.com/OpenInterpreter/open-interpreter): `interpreter --model ollama/llama3`
+   - [Aider](https://aider.chat): `aider --model ollama/llama3`
+4. Open the Chief Clarity folder and run the pipeline as with any other AI tool
+
+Note: Local models vary in quality. Chief Clarity works better with stronger models — if results are weak, try a larger model or switch to a cloud option.
+
+---
+
+**After the run:**
 - Open `data/focus.md` — your prioritized dashboard, time-blocked agenda, progress bars, and answers
 - Open `data/input.txt` — refreshed with a task check-in for tomorrow
 
@@ -196,11 +263,22 @@ chief-clarity/
 - **Two-file interface** — Daily interaction is just `input.txt` (write) and `focus.md` (read).
 - **Zero-friction input** — input.txt has no format. Type, paste, or speech-to-text. Messy is fine.
 - **AI-agnostic** — Works with any AI that can read/write files. Better AI = better results.
-- **Data stays local** — Your `data/` folder never needs to leave your machine. Store it wherever you trust.
+- **Data stays local** — No company stores your data permanently. Files live in your folder. For full privacy, use a local AI model.
 - **Agent separation** — Each agent has clear boundaries: what it reads, what it writes, what it does NOT do.
 - **Append-only logs** — `focus_log.md` and `input_archive.md` never rewrite history.
 - **Always-run** — The Focus Agent rewrites `focus.md` on every run, even with no new input. Deadlines get closer every day.
 
+## Contributing
+
+Contributions are welcome. Please open an issue first to discuss what you'd like to change before submitting a pull request.
+
+When contributing, please:
+- Do not modify agent files (`agents/cc_*.md`) without discussion — these are the core engine
+- Do not include personal data in pull requests
+- Test your changes by running the full pipeline
+
 ## License
 
-MIT
+MIT License. Copyright (c) 2026 Farzin Bahadori. See [LICENSE](LICENSE) for details.
+
+Created and maintained by [Farzin Bahadori](https://github.com/zebercut). See [NOTICE](NOTICE) for attribution guidelines.
