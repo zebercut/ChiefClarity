@@ -279,6 +279,6 @@ When contributing, please:
 
 ## License
 
-MIT License. Copyright (c) 2026 Farzin Bahadori. See [LICENSE](LICENSE) for details.
+MIT License. Copyright (c) 2026. See [LICENSE](LICENSE) for details.
 
 Created and maintained by [Farzin Bahadori](https://github.com/zebercut). See [NOTICE](NOTICE) for attribution guidelines.
