@@ -43,7 +43,7 @@ focus.md   →  (Chief Clarity writes)  →  your dashboard, agenda, progress, a
 Clone or download the entire Chief Clarity folder to a location where your AI assistant can access the files:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/chief-clarity.git
+git clone https://github.com/YOUR_USERNAME/chiefclarity.git
 ```
 
 Or download the ZIP and extract it. Put it somewhere accessible — your home directory, Documents, Google Drive, Dropbox — anywhere works, as long as the AI tool you use can read and write to that folder.
