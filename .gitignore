@@ -28,6 +28,9 @@ venv/
 ENV/
 env/
 
+# Personal data - exclude from version control
+data/
+
 # OS files
 .DS_Store
 Thumbs.db
