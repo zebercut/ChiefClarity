@@ -259,18 +259,18 @@ Confirm these headings exist in this exact order:
 1. `# Focus`
 2. `## Executive Summary`
 3. `## Main Focus Area`
-4. `## Today`
-5. `## Agenda`
-6. `## This Week`
-7. `## Objective Summary`
-8. `## Decisions / Inputs Needed`
-9. `## Suggestions`
-10. `## Behind / Missed`
-11. `## Risks`
-12. `## Patterns`
-13. `## Distraction / Noise`
-14. `## OKR Dashboard`
-15. `## Answers`
+4. `## Answers`
+5. `## Today`
+6. `## Agenda`
+7. `## This Week`
+8. `## Objective Summary`
+9. `## Decisions / Inputs Needed`
+10. `## Suggestions`
+11. `## Behind / Missed`
+12. `## Risks`
+13. `## Patterns`
+14. `## Distraction / Noise`
+15. `## OKR Dashboard`
 
 Do not add extra top-level sections.
 

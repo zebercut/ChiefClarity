@@ -1,0 +1,40 @@
+INBOX
+======
+(Add new notes/tasks/answers here. Free-form is fine.)
+(Answer the Task Check-In below - just write yes/no or a short note next to each item.)
+
+March 12, 2026 (Thu) - today
+- I need a clean plan for today that balances work priorities with family logistics.
+- I have a 9:30 AM internal leadership check-in, a 1:00 PM client review, and I need to finalize next week's campaign brief.
+- Liam has soccer practice tonight and I need to leave work on time.
+- I should confirm my Europe trip for next month and check whether my passport renewal timeline is still okay.
+- The electric car should be charged tonight and the gas car is due for a maintenance appointment soon.
+- I want one focused block today for strategic planning instead of reacting to Slack all day.
+- I also need to remember to buy dog food this week.
+- Emma asked me to help review summer camp options this weekend.
+
+March 13, 2026 (Fri) - tomorrow
+- Follow up with finance on travel reimbursement.
+- Prepare team priorities for next week before end of day.
+
+TASK CHECK-IN (March 12, 2026 - Thursday)
+=========================================
+(Mark each task: yes / no / partial. Add a short note if needed.)
+
+1. [ ] Finalize campaign brief draft before 4:00 PM.
+2. [ ] Confirm Europe travel details and passport status.
+3. [ ] Leave work on time for Liam's soccer practice.
+
+
+QUESTIONS FROM CHIEF CLARITY
+==================
+(Chief Clarity agents write questions here during processing. You answer them in INBOX above.)
+
+- (none)
+
+
+QUESTIONS FOR CHIEF CLARITY
+=================
+(You write questions here. Answers appear in focus.md ## Answers section.)
+
+- What is the minimum prep I should do today so next week's Europe trip does not create last-minute stress?

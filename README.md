@@ -1,313 +1,240 @@
-   # Chief Clarity
+# Chief Clarity
 
-A multi-agent AI system that turns messy daily notes into a structured execution plan. Chief Clarity reads your free-form input, maps it to your goals, builds a prioritized focus dashboard, and keeps you accountable — all through plain markdown files.
+A multi-agent AI system that turns messy daily notes into a structured execution plan. Chief Clarity reads your free-form input, maps it to your goals, builds an executive-first focus dashboard, and keeps you accountable through plain markdown files.
 
 ## Why Chief Clarity?
 
 ### Your data stays with you
 Chief Clarity runs entirely on local markdown files. No cloud database, no SaaS account, no vendor lock-in. Unlike productivity apps that store your goals, habits, and priorities on their servers permanently, Chief Clarity keeps everything in a folder you control.
 
-**A note on AI and privacy:** When you use a cloud AI (Claude, GPT, Gemini), your data is sent to their servers during processing — similar to sending an email or using any cloud service. However, no company maintains a permanent copy of your data, and most AI providers do not train on API inputs. For **full privacy**, use a local model (Ollama, LLaMA, Mistral) — then your data never leaves your machine. Chief Clarity works the same either way.
+**A note on AI and privacy:** When you use a cloud AI (Claude, GPT, Gemini), your data is sent to that provider during processing, similar to sending an email or using any other cloud service. For full privacy, use a local model such as Ollama, LLaMA, or Mistral so your data never leaves your machine. Chief Clarity works the same either way.
 
 ### It gets better with better AI
-Chief Clarity is AI-powered but AI-agnostic. You run the pipeline through any AI assistant that can read and write files — Claude, GPT, Gemini, or a local model. The smarter the AI, the better the output: sharper prioritization, more useful suggestions, better pattern recognition. As AI models improve, your Chief Clarity improves with them — no software update needed.
+Chief Clarity is AI-powered but AI-agnostic. You can run it through any AI assistant that can read and write files on your machine. Better models produce better prioritization, sharper synthesis, and stronger recommendations.
 
-### It thinks like a Chief of Staff, not a to-do app
-Chief Clarity doesn't just list your tasks. It scores them against your actual goals, builds a time-blocked agenda around your real routine, flags when you're off-track, and asks the right questions to keep you moving. It learns your patterns over time and adapts.
+### It thinks like a chief of staff, not a to-do app
+Chief Clarity does more than list tasks. It maps work to your objectives, separates targets from actuals, builds a realistic agenda around your schedule, flags drift, and asks pointed questions when something important is missing.
 
 ### Input is just talking
-`input.txt` is a plain text file. There's no format, no syntax, no structure required. Write a sentence, paste a paragraph, or use **speech-to-text** and just talk into it. It can be messy, long, short, full of typos — Chief Clarity doesn't care. The Intake Agent's entire job is to make sense of whatever you throw at it.
+`input.txt` is plain text. There is no required syntax or format. Type a line, paste a paragraph, or use speech-to-text and talk into it. The Intake Agent is responsible for turning that mess into structure.
 
 ## Daily Workflow
 
-Your daily interaction with Chief Clarity comes down to **two files**:
+Most days you only interact with these files:
 
+```text
+input.txt   -> what happened, what changed, answers, questions
+focus.md    -> executive dashboard, agenda, progress, answers
+answer.md   -> append-only archive of answered questions
 ```
-input.txt  →  (you write)  →  what happened, what's new, answers to questions
-focus.md   →  (Chief Clarity writes)  →  your dashboard, agenda, progress, answers
-```
 
-**Morning:**
-1. Open `data/input.txt` — answer the Task Check-In (yes/no for yesterday's tasks), add any new notes. Use your keyboard, or just open your phone's voice typing and talk. Messy is fine.
-2. Run the pipeline (see "Running Chief Clarity" below)
-3. Open `data/focus.md` — this is your daily dashboard: what to focus on, your time-blocked agenda, progress on goals, and answers to any questions you asked
+**Morning**
+1. Open `data/input.txt`, answer the Task Check-In, and add any new notes.
+2. Run the full pipeline.
+3. Open `data/focus.md` to see your executive summary, main focus area, must-win tasks, agenda, risks, and answers.
 
-**Throughout the day:** Add notes to `input.txt` whenever something comes up. Quick thought? Speech-to-text it in 10 seconds.
+**During the day**
+Add notes to `data/input.txt` whenever something comes up.
 
-**That's it.** Two files. Input goes in, focus comes out.
+**Question-only runs**
+If you only want answers for `QUESTIONS FOR CHIEF CLARITY`, run the Q&A-only command instead of the full pipeline.
 
 ## Installation
 
-### Step 1 — Download the project
-
-Clone or download the entire Chief Clarity folder to a location where your AI assistant can access the files:
+### Step 1 - Download the project
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/chiefclarity.git
 ```
 
-Or download the ZIP and extract it. Put it somewhere accessible — your home directory, Documents, Google Drive, Dropbox — anywhere works, as long as the AI tool you use can read and write to that folder.
+Or download the ZIP and extract it somewhere your AI tool can read and write.
 
-### Step 2 — Create your data files
+### Step 2 - Create your data files
 
-Copy the starter templates into the `data/` folder:
+Copy the starter templates into `data/`:
 
 ```bash
 # macOS / Linux
 cp templates/* data/
 
-# Windows (Command Prompt)
-copy templates\* data\
-
 # Windows (PowerShell)
 Copy-Item templates\* data\
 ```
 
-This creates blank versions of all the files Chief Clarity needs. You'll fill them in next.
+### Step 3 - Fill in your profile
 
-### Step 3 — Fill in your profile
+Open `data/user_profile.md` and fill in your name, timezone, routine, and preferences. All agents read this first.
 
-Open `data/user_profile.md` and fill in your name, timezone, daily routine, and preferences. All agents read this file first — the more you fill in, the better Chief Clarity adapts to your schedule.
+### Step 4 - Define your objectives
 
-### Step 4 — Define your objectives
+Open `data/objectives.md` for high-level goals, then `data/OKR.md` for measurable Key Results and tasks.
 
-Open `data/objectives.md` and write your high-level goals (the "north star" — what you're working toward). Then open `data/OKR.md` and break them down into measurable Key Results with tasks.
+### Step 5 - Add context files (optional)
 
-### Step 5 — Add context files (optional)
+Drop supporting files into `data/context/`, for example:
 
-Drop any reference files into `data/context/` — expenses, health logs, meeting notes, work documents. Any format works (`.md`, `.txt`, `.csv`). All agents read these as read-only context but never modify them.
+- `data/context/expenses.md`
+- `data/context/workout_log.md`
+- `data/context/meeting_notes.md`
 
-More context = better suggestions. For example:
-- `data/context/expenses.md` — Chief Clarity can flag budget overruns and connect spending to your financial goals
-- `data/context/workout_log.md` — Chief Clarity can track exercise consistency and adjust your agenda
-- `data/context/meeting_notes.md` — Chief Clarity can pull action items and connect them to your OKRs
+Chief Clarity summarizes these into `data/context_digest.md` and only re-reads changed files on later runs.
 
-You maintain these files yourself. Add, update, or remove them anytime.
+### Step 6 - Add your first input
 
-Chief Clarity is smart about context files — it doesn't re-read unchanged files on every run. Step 0 of the pipeline builds a **context digest** (`context_digest.md`) that summarizes each file with its last-modified date. On the next run, only new or modified files get re-read. Agents work from the digest for speed, and only open the raw file when they need specific numbers.
+Open `data/input.txt` and write anything under `INBOX`. This can be:
 
-### Step 6 — Add your first input
+- A quick note: `need to call the dentist`
+- A brain dump: `meeting moved to next month, need to update budget, remind me to email Sarah`
+- Speech-to-text: `"I finished the proposal but still need to review the contract"`
 
-Open `data/input.txt` and write anything under the INBOX section. This is plain text — no format required. You can:
+### Step 7 - Run Chief Clarity
 
-- Type a quick note: `need to call the dentist`
-- Paste a brain dump: `had a meeting with the team, we decided to push the launch to next month, also need to update the budget spreadsheet, remind me to email Sarah`
-- Use speech-to-text and just talk: `"I finished the client proposal this morning but I still need to review the contract, also I forgot to mention yesterday I signed up for that conference in April"`
+You need an AI assistant that can read and write files.
 
-It can be messy. It can have typos. It can be one line or twenty paragraphs. Chief Clarity will classify and organize everything.
+#### Option A: Claude Code
 
-### Step 7 — Run the pipeline
+```bash
+npm install -g @anthropic-ai/claude-code
+cd /path/to/chief-clarity
+claude
+```
 
-This is where the AI does the work. You need an AI assistant that can **read and write files** on your machine. Below are setup instructions for the most common options.
+Full pipeline:
 
----
+```text
+run commands/cc_full_run.md
+```
 
-#### Option A: Claude Code (recommended)
+Question-only pass:
 
-Claude Code is Anthropic's CLI tool that runs directly in your terminal with full file access. Best experience for Chief Clarity.
+```text
+run commands/cc_answer_questions.md
+```
 
-**Setup:**
-1. Install: `npm install -g @anthropic-ai/claude-code`
-2. Navigate to your Chief Clarity folder:
-   ```bash
-   cd /path/to/chief-clarity
-   ```
-3. Start Claude Code:
-   ```bash
-   claude
-   ```
-4. Run the pipeline:
-   ```
-   run commands/cc_full_run.md
-   ```
+#### Option B: Cursor / Windsurf / similar coding editors
 
-Claude Code reads and writes your files directly — no uploading, no copy-pasting. It sees your entire project folder.
+Open the project folder, then point the assistant at one of these files:
 
----
+- `commands/cc_full_run.md`
+- `commands/cc_answer_questions.md`
 
-#### Option B: Cursor / Windsurf / AI coding editors
+Ask it to follow the command file step by step and update the data files accordingly.
 
-These editors have built-in AI assistants that can read and write files in your project.
+#### Option C: Claude.ai / ChatGPT / other file-based tools
 
-**Setup:**
-1. Download [Cursor](https://cursor.sh) or [Windsurf](https://codeium.com/windsurf)
-2. Open the Chief Clarity folder as a project: File → Open Folder
-3. Open `commands/cc_full_run.md` in the editor
-4. Open the AI chat panel and type:
-   ```
-   Follow commands/cc_full_run.md step by step.
-   Execute all steps in order, reading and writing the data files as instructed.
-   ```
+Upload the project files, then instruct the model to execute either:
 
-The AI can see all files in the project and will read/write them as needed.
+- `commands/cc_full_run.md` for the full pipeline
+- `commands/cc_answer_questions.md` for question-only Q&A
 
----
+After the run, download the updated files, especially `data/focus.md`, `data/input.txt`, and `data/answer.md`.
 
-#### Option C: Claude.ai (Projects)
+#### Option D: Local AI
 
-Use Claude's web interface with the Projects feature to give it access to your files.
+For maximum privacy, use a local model with a file-capable tool such as Ollama plus Open Interpreter or Aider.
 
-**Setup:**
-1. Go to [claude.ai](https://claude.ai) and create a new Project
-2. Upload all files from your Chief Clarity folder into the project (agents/, commands/, data/, templates/)
-3. In the chat, type:
-   ```
-   Run the pipeline in commands/cc_full_run.md — follow all steps in order.
-   Read and update the data files as each step instructs.
-   ```
-4. After the run, download the updated `data/focus.md` and `data/input.txt` back to your folder
+## Commands
 
-Note: You'll need to re-upload changed files (like `input.txt`) before each run and download results after.
+Chief Clarity currently ships with two command files:
 
----
-
-#### Option D: ChatGPT (with file access)
-
-**Setup:**
-1. Open [ChatGPT](https://chat.openai.com) (Plus or Team plan for file uploads)
-2. Upload your project files or use the Code Interpreter / file upload feature
-3. Paste the contents of `commands/cc_full_run.md` into the chat and say:
-   ```
-   Execute this pipeline on my data files, step by step.
-   ```
-4. Download updated files after the run
-
----
-
-#### Option E: Local AI (full privacy)
-
-For maximum privacy, use a local model so your data never leaves your machine.
-
-**Setup with Ollama:**
-1. Install [Ollama](https://ollama.ai)
-2. Pull a capable model: `ollama pull llama3` or `ollama pull mistral`
-3. Use a tool that connects your local model to files — for example:
-   - [Open Interpreter](https://github.com/OpenInterpreter/open-interpreter): `interpreter --model ollama/llama3`
-   - [Aider](https://aider.chat): `aider --model ollama/llama3`
-4. Open the Chief Clarity folder and run the pipeline as with any other AI tool
-
-Note: Local models vary in quality. Chief Clarity works better with stronger models — if results are weak, try a larger model or switch to a cloud option.
-
----
-
-**After the run:**
-- Open `data/focus.md` — your prioritized dashboard, time-blocked agenda, progress bars, and answers
-- Open `data/input.txt` — refreshed with a task check-in for tomorrow
+- `commands/cc_full_run.md` runs the full multi-agent pipeline.
+- `commands/cc_answer_questions.md` answers only the `QUESTIONS FOR CHIEF CLARITY` section, updates `focus.md -> ## Answers`, archives results in `answer.md`, and leaves the rest of the pipeline untouched.
 
 ## How It Works
 
-Chief Clarity runs a 5-step pipeline using specialized agents:
+Full pipeline flow:
 
-```
-input.txt → Context Digest → Intake → Strategy → Focus → Executive → Archive → input.txt (refreshed)
+```text
+input.txt -> Context Digest -> Intake -> Strategy -> Focus -> Executive -> Archive -> input.txt
 ```
 
 | Step | Agent | What It Does |
-|------|-------|-------------|
-| 0 | **Context Digest** | Summarizes context files — only re-reads new or modified files |
-| 1 | **Intake** | Classifies your messy notes into tasks, ideas, decisions, status updates, questions |
-| 2 | **Strategy** | Maps work to Objectives & Key Results, detects duplicates and contradictions |
-| 3 | **Focus** | Scores tasks, builds daily agenda, tracks progress across all goals |
-| 4 | **Executive** | Answers your questions and writes them into the focus dashboard |
-| 5 | **Archive** | Archives processed input, generates a task check-in for tomorrow |
+|------|-------|--------------|
+| 0 | Context + History Digests | Re-reads only changed context and new history |
+| 1 | Intake | Classifies messy notes into structured input |
+| 2 | Strategy | Maps work to objectives and OKRs |
+| 3 | Focus | Builds the executive-first dashboard, agenda, and objective status |
+| 4 | Executive | Answers questions and writes them into `focus.md` |
+| 5 | Archive | Archives input and generates the next task check-in |
 
 ## Project Structure
 
-```
+```text
 chief-clarity/
-├── agents/                    # Agent rule files — DO NOT MODIFY
-│   ├── cc_intake_agent.md    # Classifies raw input
-│   ├── cc_strategy_agent.md  # Maps work to OKRs
-│   ├── cc_focus_agent.md     # Builds daily focus dashboard
-│   └── cc_executive_agent.md # Answers questions
-├── commands/                  # Pipeline orchestration — DO NOT MODIFY
-│   └── cc_full_run.md        # Run this to execute all 5 steps
-├── data/                      # Your workspace (private — your data lives here)
-│   ├── input.txt              # YOUR INPUT — write here daily (plain text, any format)
-│   ├── focus.md               # YOUR OUTPUT — daily dashboard + answers (auto-generated)
-│   ├── user_profile.md        # Your identity, routine, preferences (you fill in once)
-│   ├── objectives.md          # High-level life/work objectives (you fill in once)
-│   ├── OKR.md                 # Objectives, Key Results, and tasks (auto-managed)
-│   ├── structured_input.md    # Classified inbox (auto-generated)
-│   ├── focus_log.md           # Historical log (auto-generated, append-only)
-│   ├── input_archive.md       # Archived inbox entries (auto-generated)
-│   ├── context_digest.md      # Summarized context (auto-generated, avoids re-reading)
-│   └── context/               # Your reference files (read-only by agents)
-│       ├── expenses.md        # Budget, spending logs
-│       ├── workout_log.md     # Exercise history
-│       └── ...                # Any file — agents read, never modify
-└── templates/                 # Starter templates — copy into data/ to begin
-    └── ...
+|-- agents/
+|   |-- cc_intake_agent.md
+|   |-- cc_strategy_agent.md
+|   |-- cc_focus_agent.md
+|   `-- cc_executive_agent.md
+|-- commands/
+|   |-- cc_full_run.md
+|   `-- cc_answer_questions.md
+|-- data/
+|   |-- input.txt
+|   |-- focus.md
+|   |-- answer.md
+|   |-- user_profile.md
+|   |-- objectives.md
+|   |-- OKR.md
+|   |-- structured_input.md
+|   |-- focus_log.md
+|   |-- input_archive.md
+|   |-- history_digest.md
+|   |-- context_digest.md
+|   `-- context/
+`-- templates/
 ```
 
-**Files you write to:** `input.txt`, `user_profile.md`, `objectives.md`, `context/*`
-**Files Chief Clarity writes for you:** everything else
+**You usually edit:** `input.txt`, `user_profile.md`, `objectives.md`, and files under `context/`
+
+**Chief Clarity writes:** everything else
 
 ## Key Features
 
-- **Focus Scoring** — Every task gets rated HIGH/MEDIUM/LOW/NOISE based on alignment with your OKRs
-- **Daily Agenda** — Time-blocked schedule built from your actual routine and preferences
-- **Progress Tracking** — Visual progress bars per objective with KR-level detail
-- **Off-Focus Detection** — Flags when you're working on low-priority items instead of what matters
-- **Task Check-In** — Daily yes/no checklist so you don't forget to report on tasks
-- **Pattern Learning** — Detects your work habits over time (what you avoid, when you're productive)
-- **User Profile** — Remembers your preferences, routine, and behavioral patterns across runs
-- **Accountability** — Asks pointed questions when work stalls or priorities shift
-- **Q&A** — Ask questions in input.txt, get sourced answers in focus.md
-- **Data Privacy** — Everything stays in local markdown files you control
-- **Voice-Friendly Input** — input.txt is plain text — use speech-to-text and just talk
-- **Optimized for Speed** — Intelligent digest system minimizes token usage and reading time (see below)
+- Executive-first dashboard in `focus.md`
+- Main Focus Area plus 1-3 must-win items for today
+- Time-blocked agenda based on the user's real routine
+- Target vs actual tracking for objectives and key results
+- Off-focus detection and risk surfacing
+- Task Check-In generation for the next run
+- Pattern learning through `focus_log.md` and `history_digest.md`
+- Question answering with reusable history in `answer.md`
+- Local-file architecture with no database or lock-in
 
 ## Performance Optimization
 
-Chief Clarity uses a **dual-digest system** to dramatically reduce token usage and processing time on every run:
+Chief Clarity uses a dual-digest system to reduce token usage and processing time.
 
-### Context Digest (Step 0a)
-Instead of re-reading all your context files on every run, Chief Clarity:
-- Tracks the last-modified date of each file in `data/context/`
-- Only re-reads files that have changed since the last run
-- Keeps a summary digest (`context_digest.md`) that agents read instead of raw files
-- Agents only open raw context files when they need specific numbers
+### Context Digest
 
-**Result:** If you have 10 context files but only updated 1, Chief Clarity reads 1 file instead of 10.
+`data/context_digest.md` stores summaries of context files and only refreshes entries for files that changed.
 
-### History Digest (Step 0b)
-Instead of re-reading your entire `focus_log.md` and `input_archive.md` history on every run, Chief Clarity:
-- Uses **incremental reading** — after the first run, only new entries are processed
-- Maintains pattern summaries and recent context in `history_digest.md`
-- Tracks `last-processed-date` so it knows where to resume reading
-- Keeps the last 3 entries as "recent context" for agents
+### History Digest
 
-**Result:** After your first run, Step 0b reads ~1 new log entry per run instead of months of history. Token cost stays flat regardless of how long you've been using the system.
-
-### Combined Impact
-- **First run:** Full read of all files (baseline)
-- **Subsequent runs:** Only reads what changed + new log entries
-- **Long-term:** System stays fast even after months of daily use
-- **Token savings:** 70-90% reduction in reading operations for established users
+`data/history_digest.md` incrementally summarizes `focus_log.md` and `input_archive.md`, so later runs read only new history instead of the full archive.
 
 ## Design Principles
 
-- **Plain markdown** — No database, no app, no lock-in. Everything is readable text files you can open anywhere.
-- **Two-file interface** — Daily interaction is just `input.txt` (write) and `focus.md` (read).
-- **Zero-friction input** — input.txt has no format. Type, paste, or speech-to-text. Messy is fine.
-- **AI-agnostic** — Works with any AI that can read/write files. Better AI = better results.
-- **Data stays local** — No company stores your data permanently. Files live in your folder. For full privacy, use a local AI model.
-- **Agent separation** — Each agent has clear boundaries: what it reads, what it writes, what it does NOT do.
-- **Append-only logs** — `focus_log.md` and `input_archive.md` never rewrite history.
-- **Always-run** — The Focus Agent rewrites `focus.md` on every run, even with no new input. Deadlines get closer every day.
+- Plain markdown, no database
+- Low-friction daily workflow
+- AI-agnostic execution
+- Local-first data ownership
+- Clear agent boundaries
+- Append-only operational history
+- Full-run focus regeneration on every pipeline execution
 
 ## Contributing
 
-Contributions are welcome. Please open an issue first to discuss what you'd like to change before submitting a pull request.
+Contributions are welcome. Open an issue first before submitting large changes.
 
-When contributing, please:
-- Do not modify agent files (`agents/cc_*.md`) without discussion — these are the core engine
-- Do not include personal data in pull requests
-- Test your changes by running the full pipeline
+Please avoid:
+
+- Editing `agents/cc_*.md` without discussion
+- Including personal data in pull requests
+- Submitting pipeline changes without testing the full flow
 
 ## License
 
-MIT License. Copyright (c) 2026. See [LICENSE](LICENSE) for details.
+MIT License. See [LICENSE](LICENSE) for details.
 
 Created and maintained by [Farzin](https://github.com/zebercut). See [NOTICE](NOTICE) for attribution guidelines.
