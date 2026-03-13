@@ -1,0 +1,17 @@
+{
+  "schema_version": "2.0.0",
+  "generated_at": null,
+  "request_summary": null,
+  "mode": null,
+  "confidence": null,
+  "requires_live_clarification": false,
+  "live_clarification_questions": [],
+  "agents_to_run": [],
+  "execution_order": [],
+  "question_routes": [],
+  "expected_outputs": [],
+  "skip_reasons": [],
+  "blocking_issues": [],
+  "assumptions": [],
+  "status": "pending"
+}

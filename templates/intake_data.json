@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": null,
+  "items": [],
+  "counts": {
+    "Task": 0,
+    "Idea": 0,
+    "Decision": 0,
+    "Status Update": 0,
+    "Question": 0,
+    "Potential Contradiction": 0
+  }
+}

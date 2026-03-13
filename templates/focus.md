@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED — Do not edit. This file is rewritten by Chief Clarity on every run. -->
+<!-- AUTO-GENERATED - Do not edit. This file is rewritten by Chief Clarity on every run. -->
 <!-- schema_version: focus3-lite -->
 
 # Focus
@@ -26,6 +26,12 @@ None
 ## This Week
 
 - None
+
+## Weekly Calendar
+
+| Day | Main Focus | Fixed Commitments | Must-Win | Risk |
+|-----|------------|-------------------|----------|------|
+| None | None | None | None | None |
 
 ## Objective Summary
 
@@ -63,11 +69,11 @@ None
 
 ### Status Legend
 
-- 🔴 Red = urgent / behind / outcome at risk
-- 🟡 Yellow = moving but incomplete
-- 🟢 Green = on track
-- 🔵 Blue = missing data
-- ⚪ Gray = parked
+- Red = urgent / behind / outcome at risk
+- Yellow = moving but incomplete
+- Green = on track
+- Blue = missing data
+- Gray = parked
 
 ### Objective: None
 
@@ -81,4 +87,4 @@ None
 
 ## Answers
 
-(Populated by the Executive Agent)
+(Populated by the Writer Agent from planning and companion outputs)

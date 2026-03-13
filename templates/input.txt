@@ -19,5 +19,5 @@ QUESTIONS FROM Chief Clarity
 
 QUESTIONS FOR Chief Clarity
 =================
-(You write questions here. Answers appear in answer.md.)
+(You write questions here. Answers appear in focus.md -> ## Answers and are archived in answer.md.)
 

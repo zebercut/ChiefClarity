@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": null,
+  "state_snapshot": {
+    "energy": "unknown",
+    "emotional_tone": "unknown",
+    "friction_level": "unknown"
+  },
+  "patterns": [],
+  "support_suggestions": [],
+  "check_in_prompts": [],
+  "answers": [],
+  "questions_from_chief_clarity": [],
+  "safety_flags": []
+}

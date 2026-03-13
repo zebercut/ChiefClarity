@@ -1,176 +1,173 @@
-<!-- SYSTEM FILE — Do not modify. This file is part of the Chief Clarity engine. -->
+<!-- SYSTEM FILE - Do not modify. This file is part of the Chief Clarity engine. -->
 
-# Chief Clarity — System Run
+# Chief Clarity - System Run
 
-- version: 1.1.0
+- version: 2.0.0
+- pipeline_schema_target: cc4
 - focus_schema_target: focus3-lite
 
-> **All file paths below refer to `data/` files, NOT `templates/`.** Template files are used only for initial setup — never read them during a pipeline run.
+> All file paths below refer to `data/` files, not `templates/`. Template files are used only as structure sources and initial setup assets.
 
-Run the **Chief Clarity multi-agent pipeline** in the following order.
+Run the Chief Clarity pipeline in this order.
 
----
+## Step 0a - Context Digest
 
-## Step 0a — Context Digest
+Before running the pipeline, update `data/context_digest.md` so agents do not re-read unchanged context files.
 
-Before running the pipeline, update the context digest so agents don't re-read unchanged files.
+Read:
 
-**Read:**
-- `data/context_digest.md` (if it exists — this is the previous digest)
-- `data/context/*` (list all files and check their last-modified dates)
+- `data/context_digest.md` if it exists
+- `data/context/*` file names and last-modified timestamps
 
-**For each file in `data/context/`:**
-1. Compare the file's last-modified date to the date recorded in `context_digest.md`
-2. If the file is **new or modified** → read it fully and write a summary (3-5 bullet points of key data)
-3. If the file is **unchanged** → keep the existing summary from the previous digest
-4. If a file in the digest **no longer exists** → remove it from the digest
+For each file in `data/context/`:
 
-**Write:**
-- `data/context_digest.md` — one entry per context file:
+1. Compare the file's last-modified time with the digest entry.
+2. If the file is new or changed, read it fully and refresh its summary.
+3. If unchanged, keep the prior summary.
+4. If the file was removed, remove its digest entry.
 
-```
+Write `data/context_digest.md` in the existing template format.
+
+If `data/context/` is empty or missing, write:
+
+```md
 # Context Digest
-Last updated: {timestamp}
 
-## {filename}
-- modified: {last-modified date of the file}
-- summary:
-  - {key data point 1}
-  - {key data point 2}
-  - {key data point 3}
+No context files.
 ```
 
-If `data/context/` is empty or doesn't exist, write: `# Context Digest\n\nNo context files.`
+## Step 0b - History Digest
 
----
+Update `data/history_digest.md` incrementally from:
 
-## Step 0b — History Digest
+- `data/focus_log.md`
+- `data/input_archive.md`
 
-Update the history digest so agents don't re-read the full `focus_log.md` or `input_archive.md` every run. Use **incremental reading** — after the first build, only new entries are processed.
+Read only entries newer than the stored `last-processed-date` when the digest already exists.
 
-**Read:**
-- `data/history_digest.md` (if it exists — previous digest)
+Write `data/history_digest.md` using the existing template format.
 
-### Focus Log
+## Step 0c - ChiefClarity
 
-1. Read `data/history_digest.md` → `## Focus Log` → `last-processed-date`
-2. **If no digest exists (first run):** read full `data/focus_log.md`, extract patterns, write digest with `last-processed-date` set to today
-3. **If digest exists:** read ONLY entries in `data/focus_log.md` dated AFTER `last-processed-date`
-4. Merge new patterns with existing patterns in the digest. Update `last-processed-date`. Keep last 3 entries as recent context.
-5. If no new entries found: keep digest as-is, skip re-write
+Use `agents/cc_chiefclarity_agent.md`.
 
-### Input Archive
+Read:
 
-Same incremental approach for `data/input_archive.md`:
-1. Read `data/history_digest.md` → `## Input Archive` → `last-processed-date`
-2. **If first run:** read full `data/input_archive.md`, extract recurring themes, write digest
-3. **If digest exists:** read ONLY entries appended AFTER `last-processed-date`
-4. Merge new themes with existing themes. Update `last-processed-date`
-5. If no new entries found: keep digest as-is, skip re-write
-
-**Write:**
-- `data/history_digest.md` — using the format from `templates/history_digest.md`
-
----
-
-## Step 0c — Shared State
-
-Read `data/user_profile.md` and `data/objectives.md` ONCE here. These files rarely change and are needed by all agents. Carry their content forward through all subsequent steps.
-
----
-
-## Step 1 — Intake Processing
-
-*Use the Intake Agent rules* (`agents/cc_intake_agent.md`).
-
-**Read:**
 - `data/user_profile.md`
-- `data/input.txt` (*INBOX* section)
-- `data/objectives.md`
+- `data/input.txt`
+- `data/focus.md`
 - `data/OKR.md`
-- `data/context_digest.md`
-
-**Write:**
-- `data/structured_input.md`
-
----
-
-## Step 2 — Strategy Engine
-
-*Use the Strategy Agent rules* (`agents/cc_strategy_agent.md`).
-
-**Read:**
-- `data/user_profile.md`
-- `data/objectives.md`
-- `data/OKR.md`
-- `data/structured_input.md`
-- `data/context_digest.md`
-
-**Update:**
-- `data/OKR.md`
-- `data/input.txt` -> *QUESTIONS FROM CHIEF CLARITY* (if questions arise)
-
----
-
-## Step 3 — Focus Analysis
-
-*Use the Focus Agent rules* (`agents/cc_focus_agent.md`).
-
-**Read:**
-- `data/user_profile.md` (pre-read in Step 0c)
-- `data/OKR.md`
-- `data/objectives.md` (pre-read in Step 0c)
 - `data/history_digest.md`
-- `data/structured_input.md`
 - `data/context_digest.md`
 
-> Only read full `data/focus_log.md` or `data/input_archive.md` if the digest lacks specific detail needed for today's analysis.
+Write:
 
-**Update (ALWAYS — even if no new input):**
+- `data/run_manifest.json`
+
+This step must:
+
+1. Set `run_mode` to `full_run`
+2. Route each question in `QUESTIONS FOR CHIEF CLARITY`
+3. Decide whether both `planning` and `companion` are needed
+4. Record blockers before downstream steps run
+
+## Step 1 - Intake
+
+Use `agents/cc_intake_agent.md`.
+
+Read:
+
+- `data/user_profile.md`
+- `data/input.txt` -> `INBOX`
+- `data/objectives.md`
+- `data/OKR.md`
+- `data/context_digest.md`
+
+Write:
+
+- `data/structured_input.md`
+- `data/intake_data.json`
+
+## Step 2 - Planning
+
+Use `agents/cc_planning_agent.md`.
+
+Read:
+
+- `data/user_profile.md`
+- `data/objectives.md`
+- `data/OKR.md`
+- `data/structured_input.md`
+- `data/intake_data.json`
+- `data/history_digest.md`
+- `data/context_digest.md`
+- `data/focus.md`
+- `data/input.txt` -> `QUESTIONS FOR CHIEF CLARITY`
+- `data/run_manifest.json`
+
+Update only if justified:
+
+- `data/OKR.md`
+- `data/user_profile.md`
+
+Write:
+
+- `data/plan_data.json`
+
+## Step 3 - Companion
+
+Use `agents/cc_companion_agent.md`.
+
+Read:
+
+- `data/user_profile.md`
+- `data/structured_input.md`
+- `data/intake_data.json`
+- `data/history_digest.md`
+- `data/context_digest.md`
+- `data/input.txt` -> `QUESTIONS FOR CHIEF CLARITY`
+- `data/run_manifest.json`
+
+Write:
+
+- `data/companion_data.json`
+
+If ChiefClarity routed no questions to `companion` and there are no notable behavioral or emotional signals in the run, you may write a minimal valid JSON object with empty arrays and `unknown` state values.
+
+## Step 4 - Writer
+
+Use `agents/cc_writer_agent.md`.
+
+Read:
+
+- `templates/focus.md`
+- `templates/focus_log.md`
+- `templates/input.txt`
+- `data/plan_data.json`
+- `data/companion_data.json`
+- `data/run_manifest.json`
+- `data/focus.md`
+- `data/input.txt`
+- `data/answer.md`
+
+Write:
+
 - `data/focus.md`
 - `data/focus_log.md`
-- `data/OKR.md` (task priorities only, if justified)
-- `data/input.txt` -> *QUESTIONS FROM CHIEF CLARITY* (if questions arise)
+- `data/input.txt`
+- `data/answer.md`
 
----
+Requirements:
 
-## Step 4 — Executive Q&A
+1. Preserve the exact `focus.md` heading order from `templates/focus.md`
+2. Replace `## Answers` using merged planning and companion answers
+3. Append the run summary to `focus_log.md`
+4. Rewrite `input.txt` with a fresh task check-in from `focus.md` -> `## Today`
+5. Keep unanswered `QUESTIONS FOR CHIEF CLARITY` intact
+6. Keep `QUESTIONS FROM CHIEF CLARITY` populated from `plan_data.json` and `companion_data.json`
 
-*Use the Executive Agent rules* (`agents/cc_executive_agent.md`).
+## Step 5 - Archive Inbox
 
-**Read:**
-- `data/user_profile.md` (pre-read in Step 0c)
-- `data/focus.md`
-- `data/history_digest.md`
-- `data/OKR.md`
-- `data/objectives.md` (pre-read in Step 0c)
-- `data/structured_input.md`
-- `data/input.txt` (*QUESTIONS FOR CHIEF CLARITY* section)
-- `data/context_digest.md`
+Append the processed `INBOX` content to `data/input_archive.md` with a timestamp after the writer step succeeds.
 
-**Update:**
-- `data/focus.md` — `## Answers` section only
-
----
-
-## Step 5 — Archive Inbox & Generate Task Check-In
-
-Append the processed content from `input.txt` -> *INBOX* section to `data/input_archive.md` with timestamp.
-
-Then **rewrite `input.txt`** with:
-
-1. **INBOX section** — include date headers for yesterday, today, and tomorrow.
-2. **TASK CHECK-IN section** — read `data/focus.md` → *Today* and generate a yes/no checklist for each numbered item. This reduces typing — the user just marks done/not done.
-
-```
-TASK CHECK-IN ({today's date})
-==============================
-(Mark each task: yes / no / partial. Add a short note if needed.)
-
-1. [ ] {Task name from Today} — {why it matters, from focus.md}
-2. [ ] {Task name}
-3. [ ] {Task name}
-```
-
-3. **QUESTIONS FROM CHIEF CLARITY** — keep any questions written by agents during this run. If no questions were written, keep `- (none)`.
-4. **QUESTIONS FOR CHIEF CLARITY** — keep intact.
+Do not rewrite prior archive history.

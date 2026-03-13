@@ -1,6 +1,6 @@
 # OKRs (Current Execution Plan)
 
-- last_updated: (auto-updated by Strategy Agent)
+- last_updated: (auto-updated by Planning Agent)
 - timezone: (your timezone, e.g. America/New_York)
 - focus_period: 30 days
 - top_2_objectives: (set after first run)

@@ -1,6 +1,6 @@
 # User Profile
 
-This file is the **single source of truth** about the user. All Chief Clarity agents read this before processing. The Focus Agent and Strategy Agent update it when new preferences, patterns, or corrections come through the pipeline.
+This file is the **single source of truth** about the user. All Chief Clarity agents read this before processing. The Planning Agent may update it when the user states new preferences or routine facts.
 
 ---
 
@@ -39,13 +39,13 @@ This file is the **single source of truth** about the user. All Chief Clarity ag
 
 ## Work Style
 
-- (observations about how you work best — the Focus Agent will add to this over time)
+- (observations about how you work best - the Planning Agent may add to this over time)
 
 ---
 
 ## Emotional State
 
-- (updated by Focus Agent based on your input)
+- (updated from recent inputs when needed)
 
 ---
 
@@ -57,7 +57,7 @@ This file is the **single source of truth** about the user. All Chief Clarity ag
 
 ## Task Completion Patterns
 
-- (Focus Agent learns when you actually complete tasks vs. when you planned to)
+- (Planning Agent learns when you actually complete tasks vs. when you planned to)
 
 ---
 
