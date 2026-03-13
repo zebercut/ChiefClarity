@@ -102,15 +102,33 @@ After that, ChiefClarity chooses the closest mode and routes the work to the Pla
 
 ## Files You Usually Touch
 
-Most days you only care about:
+The user should only edit one file:
 
 ```text
 data/input.txt
+```
+
+Everything the user wants to communicate must go through `data/input.txt`, including:
+
+- profile information
+- objectives
+- habits
+- corrections
+- questions
+- task updates
+- agenda changes
+- anything else the user wants Chief Clarity to know
+
+The main outputs go here:
+
+```text
 data/focus.md
 data/answer.md
 ```
 
-You may also edit:
+These are output and history files. The user can read them, but should not edit them directly.
+
+All other files are system-managed and should be treated as internal state unless you are deliberately maintaining the system itself:
 
 - `data/user_profile.md`
 - `data/objectives.md`
@@ -122,17 +140,14 @@ You may also edit:
 ### User-facing files
 
 - `data/input.txt`
-  - raw notes
-  - task check-in
-  - questions from the system
-  - questions for the system
+  - the only user input channel
+  - raw notes, requests, answers, corrections, profile updates, objective updates, and questions
 - `data/focus.md`
-  - main dashboard
-  - agenda
-  - priorities
-  - answers
+  - main dashboard and agenda output
+  - read-only for the user in normal operation
 - `data/answer.md`
-  - append-only Q&A archive
+  - append-only answer/history log
+  - read-only for the user in normal operation
 
 ### System state files
 
@@ -228,13 +243,39 @@ cp templates/* data/
 Copy-Item templates\* data\
 ```
 
-### Step 3 - Fill in your profile
+### Step 3 - Do first-time setup in `data/input.txt`
 
-Open `data/user_profile.md` and fill in your name, timezone, routine, and preferences.
+The user should not open or edit `data/user_profile.md`, `data/objectives.md`, `data/OKR.md`, `data/focus.md`, or `data/answer.md` during normal use.
 
-### Step 4 - Define your objectives
+The main communication channel is:
 
-Open `data/objectives.md` for high-level goals, then `data/OKR.md` for measurable Key Results and tasks.
+- `data/input.txt`
+
+For a first-time empty setup, `data/input.txt` should contain a small onboarding section with setup questions that the user answers directly there.
+
+The first setup questions should cover at least:
+
+- user profile
+  - who the user is, timezone, location, routine, preferences, and communication style
+- objectives
+  - the user's high-level long-term goals, with short definitions or comments explaining what counts as an objective
+
+Suggested principle:
+
+- `input.txt` is the only user input surface
+- the user never needs to manually edit profile, objectives, agenda, or answer files
+- `user_profile.md`, `objectives.md`, and related internal files are generated or updated from answers in `input.txt`
+- after setup, any future change to profile, objectives, habits, or agenda should also be communicated through `input.txt`
+
+### Step 4 - Let Chief Clarity write the core files
+
+After the user answers the setup questions in `data/input.txt`, Chief Clarity should populate:
+
+- `data/user_profile.md`
+- `data/objectives.md`
+- `data/OKR.md` when enough information exists
+
+The user should keep using `data/input.txt` for future corrections instead of editing those files directly.
 
 ### Step 5 - Add context files
 

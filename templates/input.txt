@@ -1,23 +1,58 @@
 INBOX
 ======
-(Add new notes/tasks/answers here. Free-form is fine.)
-(Answer the Task Check-In below — just write yes/no or a short note next to each item.)
+(This is the only file the user should edit.)
+(Put every message to Chief Clarity here: notes, tasks, answers, corrections, profile updates, objective updates, habit updates, agenda changes, and questions.)
+(Do not edit focus.md, answer.md, user_profile.md, objectives.md, or OKR.md directly. Chief Clarity reads this file and updates those files for you.)
 
+
+FIRST-TIME SETUP
+================
+(If this is your first setup and the system is empty, answer these here.)
+(Chief Clarity should use these answers to create or update user_profile.md and objectives.md.)
+
+USER PROFILE QUESTIONS
+----------------------
+(User profile = stable facts about you that help planning stay realistic and personalized.)
+
+- Preferred name:
+- Timezone:
+- Location:
+- Typical wake time:
+- Typical sleep time:
+- Main fixed commitments:
+- Best hours for focused work:
+- Energy limits or health constraints:
+- How do you prefer Chief Clarity to communicate with you:
+- Anything else Chief Clarity should know about how you live or work:
+
+OBJECTIVES QUESTIONS
+--------------------
+(Objectives = your high-level long-term outcomes, not small tasks. They should stay fairly stable and explain what matters most.)
+
+- What are the 1 to 3 most important objectives in your life right now:
+- Why does each objective matter:
+- What would success look like for each objective:
+- Are there any deadlines, seasons, or constraints tied to those objectives:
+
+
+ONGOING INPUT
+=============
+(After setup, continue writing any new requests or updates here. Free-form is fine.)
+(Answer the Task Check-In below by writing yes/no or a short note next to each item.)
 
 
 TASK CHECK-IN
 =============
-(No tasks yet — run the pipeline first.)
+(No tasks yet - run the pipeline first.)
 
 
 QUESTIONS FROM Chief Clarity
-==================
-(Chief Clarity agents write questions here during processing. You answer them in INBOX above.)
+============================
+(Chief Clarity writes follow-up questions here. The user should answer them in INBOX above.)
 
 - (none)
 
 
 QUESTIONS FOR Chief Clarity
-=================
-(You write questions here. Answers appear in focus.md -> ## Answers and are archived in answer.md.)
-
+===========================
+(The user writes questions here. Answers appear in focus.md under Answers and are archived in answer.md.)
