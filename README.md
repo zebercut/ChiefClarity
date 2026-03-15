@@ -157,6 +157,21 @@ All other files are system-managed and should be treated as internal state unles
 - `data/companion_data.json`
 - `data/run_manifest.json`
 
+### Topic Registry (NEW)
+
+- `data/topics.md`
+  - Executive summaries of all tracked topics
+  - Quick-scan overview with status and recent activity
+  - Links to detailed topic files
+- `data/topics/[topic-name].md`
+  - Complete historical context for each topic
+  - Timeline of all related inbox items
+  - Ideas, decisions, completed work, and OKR tasks
+- `data/topic_registry.json`
+  - Metadata store for all topics
+  - Topic-to-KR linkages
+  - INBOX reference tracking
+
 ### History files
 
 - `data/focus_log.md`
@@ -281,72 +296,204 @@ The user should keep using `data/input.txt` for future corrections instead of ed
 
 Drop optional supporting files into `data/context/`.
 
-### Step 6 - Start using ChiefClarity
+### Step 6 - Start using Chief Clarity
 
-Ask for what you want directly, for example:
+Talk to Chief Clarity directly using `@cc_chiefclarity_agent.md` in your IDE. Chief Clarity will interpret your request and orchestrate the worker agents.
 
-- `prepare today`
-- `prepare my tomorrow`
-- `prepare my week`
-- `do a full analysis`
-- `answer my questions in input.txt`
-- `answer this question: what is my top priority this week?`
-- `hey ChiefClarity`
+## How to Use Chief Clarity
 
-If the request is unclear, ChiefClarity should ask what you want to do and offer the supported options.
+### Daily Usage
 
-## Commands
+**Morning Planning:**
+```
+@cc_chiefclarity_agent.md prepare today
+```
+Gets you a focused daily plan with:
+- Today's must-win items
+- Time-blocked agenda
+- Risks and blockers
+- Task check-in for the day
 
-The repository still contains command files in `commands/`, but they should be treated as legacy helpers, not the primary control model.
+**Evening Planning:**
+```
+@cc_chiefclarity_agent.md prepare tomorrow
+```
+Prepares tomorrow's focus before you end the day:
+- Tomorrow's priorities
+- Agenda preview
+- What to prep tonight
 
-The preferred interaction model is direct ChiefClarity-driven execution.
+**Weekly Planning (Sunday or Monday):**
+```
+@cc_chiefclarity_agent.md prepare the week
+```
+Builds your weekly view:
+- Week's critical items
+- Weekly calendar with fixed commitments
+- Deadlines and outcomes target
+- Weekly priorities mapped to objectives
+
+**Deep Analysis (Weekly refresh):**
+```
+@cc_chiefclarity_agent.md do a full analysis
+```
+Comprehensive current-state analysis:
+- OKR progress review
+- Risk and pattern identification
+- Broad context refresh
+- Strategic alignment check
+
+### Asking Questions
+
+**Answer questions you wrote in input.txt:**
+```
+@cc_chiefclarity_agent.md answer my questions
+```
+
+**Ask a specific question:**
+```
+@cc_chiefclarity_agent.md what is my top priority this week?
+```
+
+**General conversation:**
+```
+@cc_chiefclarity_agent.md hey
+```
+Chief Clarity will ask what you want to do and offer options.
+
+### Example Workflows
+
+**Typical Daily Flow:**
+1. Morning: Add notes to `data/input.txt` (tasks, updates, questions)
+2. Run: `@cc_chiefclarity_agent.md prepare today`
+3. Review: Check `data/focus.md` for your agenda
+4. Work through the day, update task check-in in `input.txt`
+5. Evening: `@cc_chiefclarity_agent.md prepare tomorrow`
+
+**Weekly Flow:**
+1. Sunday/Monday: Review week, add notes to `input.txt`
+2. Run: `@cc_chiefclarity_agent.md prepare the week`
+3. Review: Check weekly calendar and critical items in `focus.md`
+4. Mid-week: Run `prepare today` daily
+5. End of week: `@cc_chiefclarity_agent.md do a full analysis` for deep refresh
+
+**When Things Change:**
+1. Add updates to `data/input.txt` (new tasks, changed priorities, decisions)
+2. Run: `@cc_chiefclarity_agent.md prepare today` (or `prepare the week`)
+3. Chief Clarity updates your plan based on new information
+
+### Tips
+
+- **Use `input.txt` for everything** - Don't edit `focus.md`, `user_profile.md`, `OKR.md` directly
+- **Be specific in requests** - "prepare today" is clearer than "help me plan"
+- **Answer task check-ins** - Update task status in `input.txt` for accurate planning
+- **Review `focus.md` regularly** - It's your single source of truth for what matters now
+- **Use topic links** - Click topic links in `focus.md` to jump to `topics.md` summaries, then to full detail files
+- **Explore topic history** - Each topic file has complete timeline, ideas, decisions, and related tasks
+- **Use context links** - Click agenda item links to see full context (ideas, decisions, next steps)
+- **Ask clarification questions** - Chief Clarity will ask if your request is unclear
 
 ## Project Structure
 
 ```text
 chief-clarity/
-|-- agents/
-|   |-- cc_chiefclarity_agent.md
-|   |-- cc_intake_agent.md
-|   |-- cc_planning_agent.md
-|   |-- cc_companion_agent.md
-|   `-- cc_writer_agent.md
-|-- commands/
-|   |-- cc_full_run.md
-|   |-- cc_answer_questions.md
-|   `-- cc_analyze_day.md
-|-- data/
-|   |-- input.txt
-|   |-- focus.md
-|   |-- answer.md
-|   |-- user_profile.md
-|   |-- objectives.md
-|   |-- OKR.md
-|   |-- structured_input.md
-|   |-- intake_data.json
-|   |-- plan_data.json
-|   |-- companion_data.json
-|   |-- run_manifest.json
-|   |-- focus_log.md
-|   |-- input_archive.md
-|   |-- history_digest.md
-|   |-- context_digest.md
-|   `-- context/
-`-- templates/
+|-- agents/                      # Multi-agent system
+|   |-- cc_chiefclarity_agent.md # Main orchestrator (talk to this one)
+|   |-- cc_intake_agent.md       # Normalizes inbox content
+|   |-- cc_planning_agent.md     # Planning, priorities, OKR reasoning
+|   |-- cc_companion_agent.md    # Emotional and behavioral support
+|   `-- cc_writer_agent.md       # Renders final markdown files
+|-- data/                        # Your data (git-ignored)
+|   |-- input.txt                # ← YOU EDIT THIS (main input channel)
+|   |-- focus.md                 # ← YOU READ THIS (main dashboard)
+|   |-- answer.md                # Answer history log
+|   |-- topics.md                # Topic Registry - executive summaries
+|   |-- topics/                  # Topic detail files
+|   |   |-- job-search.md        # Example: complete job search history
+|   |   `-- ...                  # One file per topic
+|   |-- topic_registry.json      # Topic metadata and linkages
+|   |-- user_profile.md          # System-managed profile
+|   |-- objectives.md            # System-managed objectives
+|   |-- OKR.md                   # System-managed execution plan
+|   |-- structured_input.md      # Normalized inbox (system-managed)
+|   |-- intake_data.json         # Intake agent output
+|   |-- plan_data.json           # Planning agent output
+|   |-- companion_data.json      # Companion agent output
+|   |-- run_manifest.json        # Execution contract for each run
+|   |-- focus_log.md             # Append-only run history
+|   |-- input_archive.md         # Archived inbox items
+|   |-- history_digest.md        # Historical context digest
+|   |-- context_digest.md        # Current context digest
+|   `-- context/                 # Optional supporting files
+`-- templates/                   # Starter templates
+    |-- focus.md                 # Focus.md structure template
+    |-- input.txt                # Input.txt starter template
+    |-- topic_detail.md          # Topic detail file template
+    `-- ...                      # Other templates
 ```
+
+**Key Files:**
+- **YOU EDIT:** `data/input.txt` only
+- **YOU READ:** `data/focus.md` (main dashboard), `data/answer.md` (Q&A history)
+- **SYSTEM MANAGES:** Everything else
 
 ## Design Principles
 
-- ChiefClarity first
-- Plain markdown and JSON, no database
-- Local-first data ownership
-- Clear worker boundaries
-- Append-only operational history
-- Stable user-facing `focus.md` format
-- Ask live clarification when intent is unclear
+- **Chief Clarity first** - Orchestrator decides what to do, workers execute
+- **Plain markdown and JSON** - No database, human-readable files
+- **Local-first data ownership** - Your data stays on your machine
+- **Clear worker boundaries** - Each agent has specific responsibilities
+- **Append-only operational history** - Never lose context
+- **Stable user-facing format** - `focus.md` structure stays consistent
+- **Live clarification** - Ask questions when intent is unclear
+- **Single input channel** - `input.txt` is the only file you edit
+- **Context linking** - Agenda items link to full context (ideas, decisions, next steps)
+- **Topic Registry** - Unified historical view of all recurring topics with auto-discovery and KR linkage
+
+## Troubleshooting
+
+**Q: Chief Clarity isn't responding to my request**
+- Make sure you're using `@cc_chiefclarity_agent.md` to invoke Chief Clarity
+- Check that your request is clear (e.g., "prepare today" not "help")
+
+**Q: My changes in input.txt aren't showing up**
+- Run a Chief Clarity command after updating `input.txt`
+- Chief Clarity processes `input.txt` when you run a mode (prepare today, etc.)
+
+**Q: focus.md has old information**
+- Run `@cc_chiefclarity_agent.md prepare today` to refresh
+- For deep refresh: `@cc_chiefclarity_agent.md do a full analysis`
+
+**Q: I want to change my profile/objectives**
+- Add the changes to `data/input.txt` in the INBOX section
+- Run any Chief Clarity mode - it will update system files automatically
+- Don't edit `user_profile.md` or `objectives.md` directly
+
+**Q: How do I see context for an agenda item?**
+- Look for clickable links in agenda table (e.g., `[Job search](#job-search-context)`)
+- Click the link to jump to full context section
+- Context includes: ideas, completed tasks, conclusions, next steps, decisions, undecided items
+
+**Q: How do I see all history for a topic?**
+- Click topic links in `focus.md` (e.g., `[Job Search](topics.md#job-search)`)
+- This jumps to executive summary in `topics.md`
+- Click `[→ Full Detail]` link to see complete historical timeline
+- Topic files include: all INBOX references, ideas, decisions, completed work, OKR tasks
 
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
 
 Created and maintained by [Farzin](https://github.com/zebercut). See [NOTICE](NOTICE) for attribution guidelines.
+
+## Quick Reference
+
+| What you want | Command |
+|---------------|----------|
+| Plan my day | `@cc_chiefclarity_agent.md prepare today` |
+| Plan tomorrow | `@cc_chiefclarity_agent.md prepare tomorrow` |
+| Plan my week | `@cc_chiefclarity_agent.md prepare the week` |
+| Deep analysis | `@cc_chiefclarity_agent.md do a full analysis` |
+| Answer my questions | `@cc_chiefclarity_agent.md answer my questions` |
+| Ask a question | `@cc_chiefclarity_agent.md [your question]` |
+| General help | `@cc_chiefclarity_agent.md hey` |

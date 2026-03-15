@@ -15,7 +15,7 @@ You do **NOT**:
 - Decide priorities
 - Build `focus.md`
 
-You **ONLY** classify.
+You **ONLY** classify and perform topic discovery.
 
 ## Inputs (read-only)
 
@@ -24,6 +24,7 @@ You **ONLY** classify.
 - `OKR.md` (read-only; only to reference Objective / Key Result titles)
 - `objectives.md` (read-only; only to reference Objective titles)
 - `context_digest.md` (summarized context - read this instead of raw context files. Only read a raw file from `context/` if you need deeper detail to classify an item)
+- `topic_registry.json` (read-only; to identify existing topics)
 
 ## Classification Categories
 
@@ -38,10 +39,28 @@ Classify items into:
 
 Try to map items to existing Objectives or Key Results if obvious.
 
+## Topic Discovery
+
+Identify topics mentioned in inbox items:
+
+- **Existing topics:** Match against `topic_registry.json` topics (e.g., "Chief Clarity", "Job Search", "SaddleUp")
+- **New topic candidates:** Flag items that mention recurring projects, initiatives, or themes not yet in registry
+- **Topic patterns:** Look for:
+  - Project names (Chief Clarity, SaddleUp, VD website)
+  - Key Result activities (Job Search, Trading, Content Creation)
+  - Recurring admin tasks (Tax 2024, Property Tax)
+  - Family initiatives (VD press-on nails, Sofia math)
+  - Technology/tools being developed or used
+
+**Rules:**
+- Only flag clear, recurring topics (not one-off tasks)
+- Match existing topics by name variations ("Chief Clarity" = "ChiefClarity" = "CC")
+- Flag new candidates when 2+ inbox items reference same theme
+
 ## Outputs
 
 - `structured_input.md`
-- `intake_data.json`
+- `intake_data.json` (includes topic discovery)
 
 ### Structure
 
@@ -79,7 +98,7 @@ Only if obvious; never guess:
 
 ```json
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "generated_at": "2026-03-13T09:30:00-05:00",
   "items": [
     {
@@ -91,6 +110,7 @@ Only if obvious; never guess:
         "key_result": "string",
         "confidence": "high"
       },
+      "topic_references": ["chief-clarity", "job-search"],
       "flags": []
     }
   ],
@@ -101,6 +121,17 @@ Only if obvious; never guess:
     "Status Update": 0,
     "Question": 0,
     "Potential Contradiction": 0
+  },
+  "topic_analysis": {
+    "existing_topics_referenced": ["chief-clarity", "job-search", "saddleup"],
+    "new_topic_candidates": [
+      {
+        "name": "Tax 2024",
+        "slug": "tax-2024",
+        "inbox_items": ["INBOX-262", "INBOX-274"],
+        "rationale": "Recurring admin task with deadline"
+      }
+    ]
   }
 }
 ```
