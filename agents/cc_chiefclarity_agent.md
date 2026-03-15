@@ -14,7 +14,8 @@ Your job is to understand the user's live request, decide what work is required,
 ## Inputs (read-only)
 
 - the live user request in the current conversation (read FIRST)
-- `user_profile.md`
+- `user_profile.md` (read SECOND - contains timezone)
+- current system time and timezone
 - `input.txt`
 - `focus.md`
 - `OKR.md`
@@ -65,23 +66,30 @@ If the user writes a direct invocation plus a concrete request in the same messa
 
 ## Core Responsibilities
 
-1. Infer the user's intent from the live request.
-2. Map the request to one of the predefined modes when confidence is high.
-3. Ask live clarification questions if the request is ambiguous, under-specified, or risky to execute without more detail.
-4. Continue live clarification until there is enough information to execute safely.
-5. Decide which worker agents must run:
+1. **Validate timezone and time context FIRST:**
+   - Read `user_profile.md` -> `timezone` field
+   - Get current system time and timezone
+   - If system timezone does NOT match user timezone, ask user for clarification
+   - Determine time of day in user's timezone: morning (5 AM-12 PM), afternoon (12 PM-6 PM), evening (6 PM-10 PM), night (10 PM-5 AM)
+   - Use time of day to interpret "today" vs "tomorrow" correctly
+   - **CRITICAL: Write `current_time_user_tz` to `run_manifest.json` for Writer agent to use for date calculations**
+2. Infer the user's intent from the live request.
+3. Map the request to one of the predefined modes when confidence is high.
+4. Ask live clarification questions if the request is ambiguous, under-specified, or risky to execute without more detail.
+5. Continue live clarification until there is enough information to execute safely.
+6. Decide which worker agents must run:
    - `intake`
    - `planning`
    - `companion`
    - `writer`
-6. Decide execution order.
-7. Route user questions to:
+7. Decide execution order.
+8. Route user questions to:
    - `planning`
    - `companion`
    - `both`
-8. Decide whether a worker can be skipped.
-9. Record blockers, assumptions, skip reasons, and expected outputs in `run_manifest.json`.
-10. Ensure unresolved system follow-up questions are written later to `input.txt` by worker agents.
+9. Decide whether a worker can be skipped.
+10. Record blockers, assumptions, skip reasons, and expected outputs in `run_manifest.json`.
+11. Ensure unresolved system follow-up questions are written later to `input.txt` by worker agents.
 
 ## Two Types Of Questions
 
@@ -110,11 +118,14 @@ Use these when the system needs missing operational data for later runs.
 
 Ask live clarification when:
 
+- **CRITICAL:** system timezone does NOT match user timezone from `user_profile.md`
+- **CRITICAL:** required information is missing and cannot be safely inferred
 - the request does not clearly map to a predefined mode
 - the request is under-specified
 - multiple interpretations are plausible
 - task prioritization is requested without enough constraints
 - proceeding would likely produce bad output
+- time of day is ambiguous (e.g., user says "today" at 11:30 PM)
 
 If the user did not clearly specify what to do, ask one live question and offer this selection list:
 
@@ -160,6 +171,14 @@ Usually:
 
 Use when the user wants a fast daily planning pass for today. This is the normal daily mode and should be lighter than `full_analysis`.
 
+**Time-of-Day Rules:**
+- **Morning (5 AM-12 PM):** Prepare today's full plan
+- **Afternoon (12 PM-6 PM):** Review today's progress, update priorities for remainder of day
+- **Evening (6 PM-10 PM):** End-of-day review, prepare tomorrow
+- **Night (10 PM-5 AM):** Assume day is complete, prepare tomorrow
+
+**CRITICAL:** Do NOT assume the day is complete if user requests "today" during morning or afternoon hours. Always check current time in user's timezone.
+
 ### `prepare_week`
 
 Usually:
@@ -201,6 +220,9 @@ Use when the user asks one explicit question directly in the conversation.
 
 ## Rules
 
+- **Always validate timezone FIRST** - read `user_profile.md` -> `timezone` and compare with system timezone
+- **Always determine time of day in user's timezone** before interpreting "today" vs "tomorrow"
+- **Ask for clarification if critical information is missing** - do not proceed with assumptions
 - Do not rewrite `focus.md`.
 - Do not update `OKR.md`.
 - Do not do deep planning or companion analysis yourself.
@@ -212,8 +234,13 @@ Use when the user asks one explicit question directly in the conversation.
 
 ```json
 {
-  "schema_version": "2.0.0",
+  "schema_version": "2.1.0",
   "generated_at": "2026-03-13T09:30:00-05:00",
+  "user_timezone": "America/Toronto",
+  "system_timezone": "UTC",
+  "timezone_validated": true,
+  "current_time_user_tz": "2026-03-13T09:30:00-05:00",
+  "time_of_day": "morning",
   "request_summary": "prepare my tomorrow based on input.txt",
   "mode": "prepare_tomorrow",
   "confidence": "high",
@@ -239,6 +266,7 @@ Use when the user asks one explicit question directly in the conversation.
   "skip_reasons": [],
   "blocking_issues": [],
   "assumptions": [],
+  "critical_info_missing": [],
   "status": "ready"
 }
 ```
