@@ -7,6 +7,121 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-03-18
+
+### Added
+
+#### Archival & Indexing System
+- **Three-tier archival architecture** - Efficient historical context management
+  - Active data (7 days) with topic and date indexing
+  - Recent archive (30 days) with monthly rotation
+  - Long-term archive (permanent storage by month)
+
+- **Topic Index** - Fast navigation to related entries
+  - `structured_input.md` header with topic-based navigation
+  - Recent INBOX-IDs per topic (last 7 days)
+  - Topic summaries with latest activity
+  - Last updated timestamps per topic
+  - 10 default topics: Job Search, SaddleUp, Family (Vida/Sofia/Leila), Car Replacement, Emotional State, Daily Habits, Admin/Taxes, Chief Clarity Development
+
+- **Date Index** - Quick access by date range
+  - `structured_input.md` header with date-based navigation
+  - INBOX-ID ranges per date
+  - Entry counts per day
+  - Last 7 days visible in active file
+
+- **Weekly Summaries** - Synthesized context across weeks
+  - `data/structured_input_summary.md` - Weekly summary file
+  - Automatic generation every Sunday
+  - Sections: Job Search, SaddleUp, Family Support, Habits & Health, Critical Decisions, Patterns, Risks
+  - Quick context without reading individual entries
+
+- **Automatic Archival Rotation**
+  - **7-day rotation (Sundays):**
+    - Entries older than 7 days moved to `structured_input_archive_YYYY-MM.md`
+    - Weekly summary generated and appended
+    - Topic index updated (old INBOX-IDs removed)
+    - Active file stays small (~300 lines)
+  - **30-day rotation (First Sunday of month):**
+    - Previous month's archives moved to `archives/YYYY-MM/` folder
+    - New monthly archive files created
+    - Long-term storage organized by month
+
+- **Raw Input Preservation**
+  - `data/input_archive_YYYY-MM.md` - Monthly raw input archive
+  - Archives raw `input.txt` content BEFORE cleanup
+  - Preserves user's exact notes forever
+  - Timestamped entries with ISO 8601 format
+
+- **Archive Folder Structure**
+  - `data/archives/YYYY-MM/` - Monthly archive folders
+  - `input_archive_YYYY-MM.md` - Raw input by month
+  - `structured_input_archive_YYYY-MM.md` - Structured entries by month
+  - `README.md` - Archive usage guide with search examples
+
+- **System Documentation**
+  - `data/ARCHIVAL_SYSTEM.md` - Complete archival system documentation
+  - Architecture overview, workflow, file structure, search methods
+  - Implementation status and version history
+
+#### Agent Enhancements
+- **Intake Agent** (`cc_intake_agent.md`) - Major workflow update
+  - **STEP 1:** Archive raw input BEFORE processing (critical for data preservation)
+  - **STEP 2:** Check 7-day rotation (Sundays only)
+  - **STEP 3:** Check 30-day rotation (first Sunday of month only)
+  - **STEP 4:** Process input (normal intake work)
+  - Topic index updates with new INBOX-IDs
+  - Date index updates with new entries
+  - Weekly summary generation from archived entries
+
+#### Documentation
+- **README.md** updates:
+  - Archival & Indexing System section
+  - Updated Main Agents section (Intake Agent responsibilities)
+  - Updated project structure with archive files
+  - New troubleshooting entries for historical search
+  - Updated design principles (layered memory, data preservation)
+  - New tips for topic index and archive usage
+- **CHANGELOG.md** - Version 2.1.0 release notes (this file)
+
+### Changed
+
+#### File Organization
+- **structured_input.md** - New header structure
+  - Topic index at top (fast navigation)
+  - Date index below topic index
+  - Active period: last 7 days only
+  - Modified timestamp updated on every run
+
+- **Intake Agent workflow** - Archival-first approach
+  - Raw input archival happens FIRST (before any processing)
+  - Prevents data loss from Writer Agent cleanup
+  - Rotation checks happen before normal processing
+  - Topic and date indexes updated automatically
+
+#### Performance Optimization
+- **Layered retrieval strategy** - Hierarchical search from fast to deep
+  - Layer 1: Topic Index (fastest, 80% of queries, <1 second)
+  - Layer 2: Date Index (fast, time-based queries, <2 seconds)
+  - Layer 3: Weekly Summaries (medium, broader context, <1 second)
+  - Layer 4: Archive Search (slower, deep history, ~5 seconds)
+  - Layer 5: Raw Input Search (deepest, exact words, ~5 seconds)
+
+- **Active file size management**
+  - `structured_input.md` stays under 500 lines (7 days only)
+  - Weekly summaries ~200 lines/month
+  - Monthly archives ~3,000-5,000 lines
+  - Annual total ~36,000-60,000 lines (manageable without database)
+
+### Fixed
+
+#### Data Loss Prevention
+- **Raw input preservation** - Fixed archival process that stopped after March 9
+  - Intake Agent now archives raw input on EVERY run
+  - Missing March 16-17 entries restored manually
+  - Archival happens BEFORE Writer Agent cleanup
+  - User's exact notes never lost again
+
 ### Added - 2026-03-15
 
 #### Topic Registry Architecture

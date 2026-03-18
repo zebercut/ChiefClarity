@@ -26,8 +26,10 @@ This keeps orchestration in one place instead of duplicating workflow logic acro
   - Selects workers
   - Writes `run_manifest.json`
 - `cc_intake_agent.md`
-  - Normalizes inbox content
-  - Writes `structured_input.md` and `intake_data.json`
+  - Archives raw input before processing (prevents data loss)
+  - Normalizes inbox content with topic indexing
+  - Performs 7-day and 30-day archival rotation
+  - Writes `structured_input.md`, `intake_data.json`, and archive files
 - `cc_planning_agent.md`
   - Handles planning, priorities, OKR reasoning, agenda guidance, and operational answers
   - Writes `plan_data.json`
@@ -172,10 +174,37 @@ All other files are system-managed and should be treated as internal state unles
   - Topic-to-KR linkages
   - INBOX reference tracking
 
+### Archival & Indexing System (NEW - v2.1.0)
+
+Chief Clarity now includes a three-tier archival system with topic indexing for efficient historical context retrieval:
+
+**Active Data (7 days):**
+- `data/structured_input.md` - Active entries with topic index and date index
+- `data/structured_input_summary.md` - Weekly summaries for quick context
+- `data/input_archive_YYYY-MM.md` - Raw user input archive (current month)
+
+**Recent Archive (30 days):**
+- `data/structured_input_archive_YYYY-MM.md` - Archived structured entries (current month)
+
+**Long-term Archive:**
+- `data/archives/YYYY-MM/` - Monthly archive folders
+  - `input_archive_YYYY-MM.md` - Raw input by month
+  - `structured_input_archive_YYYY-MM.md` - Structured entries by month
+  - `README.md` - Archive usage guide
+
+**System Documentation:**
+- `data/ARCHIVAL_SYSTEM.md` - Complete archival system documentation
+
+**Key Features:**
+- **Topic Index:** Fast navigation to related entries by topic (Job Search, SaddleUp, Family, etc.)
+- **Date Index:** Quick access to entries by date range
+- **Weekly Summaries:** Synthesized context across weeks without reading individual entries
+- **Automatic Rotation:** 7-day rotation (Sundays), 30-day rotation (first Sunday of month)
+- **Raw Input Preservation:** User's exact notes archived before cleanup
+
 ### History files
 
 - `data/focus_log.md`
-- `data/input_archive.md`
 - `data/history_digest.md`
 - `data/context_digest.md`
 
@@ -392,6 +421,9 @@ Chief Clarity will ask what you want to do and offer options.
 - **Explore topic history** - Each topic file has complete timeline, ideas, decisions, and related tasks
 - **Use context links** - Click agenda item links to see full context (ideas, decisions, next steps)
 - **Ask clarification questions** - Chief Clarity will ask if your request is unclear
+- **Search by topic** - Check topic index in `structured_input.md` for fast retrieval of related entries
+- **Access historical context** - Weekly summaries provide quick context without reading individual entries
+- **Your notes are preserved** - Raw input is archived before cleanup, never lost
 
 ## Project Structure
 
@@ -415,13 +447,21 @@ chief-clarity/
 |   |-- user_profile.md          # System-managed profile
 |   |-- objectives.md            # System-managed objectives
 |   |-- OKR.md                   # System-managed execution plan
-|   |-- structured_input.md      # Normalized inbox (system-managed)
+|   |-- structured_input.md      # Active entries (7 days) with topic/date index
+|   |-- structured_input_summary.md  # Weekly summaries
+|   |-- structured_input_archive_YYYY-MM.md  # Monthly structured archive
+|   |-- input_archive_YYYY-MM.md     # Monthly raw input archive
+|   |-- archives/                # Long-term archives
+|   |   `-- YYYY-MM/             # Monthly archive folders
+|   |       |-- input_archive_YYYY-MM.md
+|   |       |-- structured_input_archive_YYYY-MM.md
+|   |       `-- README.md
+|   |-- ARCHIVAL_SYSTEM.md       # Archival system documentation
 |   |-- intake_data.json         # Intake agent output
 |   |-- plan_data.json           # Planning agent output
 |   |-- companion_data.json      # Companion agent output
 |   |-- run_manifest.json        # Execution contract for each run
 |   |-- focus_log.md             # Append-only run history
-|   |-- input_archive.md         # Archived inbox items
 |   |-- history_digest.md        # Historical context digest
 |   |-- context_digest.md        # Current context digest
 |   `-- context/                 # Optional supporting files
@@ -449,6 +489,9 @@ chief-clarity/
 - **Single input channel** - `input.txt` is the only file you edit
 - **Context linking** - Agenda items link to full context (ideas, decisions, next steps)
 - **Topic Registry** - Unified historical view of all recurring topics with auto-discovery and KR linkage
+- **Layered memory** - Topic index (fast), weekly summaries (context), archives (deep history)
+- **Data preservation** - Raw input archived before cleanup, never lost
+- **Automatic archival** - 7-day and 30-day rotation without manual intervention
 
 ## Troubleshooting
 
@@ -479,6 +522,18 @@ chief-clarity/
 - This jumps to executive summary in `topics.md`
 - Click `[→ Full Detail]` link to see complete historical timeline
 - Topic files include: all INBOX references, ideas, decisions, completed work, OKR tasks
+
+**Q: How do I find old notes or entries?**
+- **Last 7 days:** Check topic index in `data/structured_input.md`
+- **Last 2-4 weeks:** Read weekly summaries in `data/structured_input_summary.md`
+- **Older entries:** Search `data/structured_input_archive_YYYY-MM.md`
+- **Raw notes:** Search `data/input_archive_YYYY-MM.md` for your exact words
+- **Very old:** Check `data/archives/YYYY-MM/` folders
+
+**Q: Are my notes preserved when input.txt is cleaned?**
+- Yes! The Intake Agent archives raw `input.txt` content BEFORE cleanup
+- Your exact notes are preserved in `data/input_archive_YYYY-MM.md`
+- Archival happens automatically on every Chief Clarity run
 
 ## License
 

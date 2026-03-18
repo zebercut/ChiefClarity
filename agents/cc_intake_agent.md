@@ -17,6 +17,61 @@ You do **NOT**:
 
 You **ONLY** classify and perform topic discovery.
 
+## Workflow (Execute in Order)
+
+### STEP 1: Archive Raw Input (CRITICAL - Do This FIRST)
+
+**Before any processing**, append raw `input.txt` content to monthly archive:
+
+1. Read current timestamp and format as ISO 8601
+2. Read entire `input.txt` content
+3. Create archive entry with timestamp header
+4. Append to `data/input_archive_YYYY-MM.md` (e.g., `input_archive_2026-03.md`)
+
+**Archive Entry Format:**
+```markdown
+---
+
+## YYYY-MM-DD (Day) - HH:MM
+
+- captured: YYYY-MM-DDTHH:MM:SS-TZ
+- raw:
+
+\`\`\`text
+[entire input.txt content]
+\`\`\`
+```
+
+**Why this is CRITICAL:** Raw input is cleaned by Writer Agent after processing. If not archived first, user's exact notes are lost forever.
+
+### STEP 2: Check 7-Day Rotation (Sundays Only)
+
+**If today is Sunday**, perform weekly archival rotation:
+
+1. Calculate cutoff date: `today - 7 days`
+2. Read `structured_input.md`
+3. Extract all entries with dates before cutoff
+4. Append extracted entries to `structured_input_archive_YYYY-MM.md`
+5. Generate weekly summary from extracted entries
+6. Append summary to `structured_input_summary.md`
+7. Update topic index in `structured_input.md` (remove archived INBOX-IDs)
+8. Update date index in `structured_input.md`
+
+**Weekly Summary Format:** See `structured_input_summary.md` for template
+
+### STEP 3: Check 30-Day Rotation (First Sunday of Month Only)
+
+**If today is first Sunday of new month**, perform monthly archival rotation:
+
+1. Identify previous month (e.g., if today is April 6, previous month is March)
+2. Move `input_archive_YYYY-MM.md` to `archives/YYYY-MM/` folder
+3. Move `structured_input_archive_YYYY-MM.md` to `archives/YYYY-MM/` folder
+4. Create new empty archive files for current month
+
+### STEP 4: Process Input (Normal Intake Work)
+
+Now proceed with normal intake processing.
+
 ## Inputs (read-only)
 
 - `user_profile.md` (read FIRST - use the user's preferred name when referencing them; understand any abbreviations or nicknames for people they mention)
@@ -59,12 +114,43 @@ Identify topics mentioned in inbox items:
 
 ## Outputs
 
-- `structured_input.md`
+- `input_archive_YYYY-MM.md` (raw input archive - append only)
+- `structured_input.md` (with topic index and date index)
+- `structured_input_archive_YYYY-MM.md` (7-day rotation output - Sundays only)
+- `structured_input_summary.md` (weekly summaries - Sundays only)
 - `intake_data.json` (includes topic discovery)
 
-### Structure
+### structured_input.md Structure
 
-```
+```markdown
+---
+type: structured_input
+created: YYYY-MM-DD
+modified: YYYY-MM-DD
+active_period: last_7_days
+timezone: America/Toronto
+---
+
+# Structured Input (Active - Last 7 Days)
+
+## Topic Index
+
+### [Topic Name]
+**Recent:** INBOX-XXX, INBOX-YYY, INBOX-ZZZ
+**Summary:** Brief summary of recent activity
+**Last updated:** YYYY-MM-DD
+
+[Repeat for each topic]
+
+## Date Index
+
+### [Date]
+- INBOX-XXX to INBOX-YYY (N entries)
+
+[Repeat for last 7 days]
+
+---
+
 ## Tasks
 ## Ideas
 ## Decisions
@@ -73,6 +159,12 @@ Identify topics mentioned in inbox items:
 ## Possible Objective Links
 ## Potential Contradictions
 ```
+
+**Topic Index Update Rules:**
+- Update topic index with new INBOX-IDs as you process items
+- Update "Last updated" date when topic receives new entries
+- Keep only INBOX-IDs from last 7 days in "Recent" list
+- Update summary to reflect latest activity
 
 ## Formatting Rules
 
