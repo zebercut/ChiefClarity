@@ -1,11 +1,70 @@
 <!-- AUTO-GENERATED - Do not edit. This file is rewritten by Chief Clarity on every run. -->
-<!-- schema_version: focus3-lite -->
+<!-- schema_version: focus4-executive -->
 
-# Focus
+# Focus - [Day Month Date, Year]
 
-## Executive Summary
+**Main Focus:** None
+**Critical Today:** None
+**Emotional State:** None
+**Progress:** None
+**Positive Shift:** None
 
+---
+
+## Today - [Day Month Date]
+
+| Time | Task | Type | Urgency |
+|------|------|------|---------||
+| None | None | None | None |
+
+**Main Goal:** None
+
+**Key Priorities:**
 - None
+
+---
+
+## This Week - [Month Date-Date]
+
+**Week Focus:** None
+
+| Day | Must-Win | Fixed Commitments | Status |
+|-----|----------|-------------------|--------|
+| None | None | None | None |
+
+**Deadlines This Week:**
+- None
+
+---
+
+## Emotional Check-In
+
+**Current State:**
+- None
+
+**What Happened:**
+- None
+
+**Positive Shifts:**
+- None
+
+**Support Needed:**
+- None
+
+---
+
+## Yesterday - [Day Month Date]
+
+**Completed:**
+- None
+
+**Not Completed:**
+- None
+
+**Key Context:**
+- None
+
+---
 
 ## Main Focus Area
 
@@ -13,43 +72,33 @@
 
 None
 
-## Today
-
-1. None
-
-## Agenda
-
-| Time | Task | Type | Urgency |
-|------|------|------|---------|
-| None | None | None | None |
-
-## This Week
-
-- None
-
-## Weekly Calendar
-
-| Day | Main Focus | Fixed Commitments | Must-Win | Risk |
-|-----|------------|-------------------|----------|------|
-| None | None | None | None | None |
-
-## Objective Summary
-
-| Objective | Status | Target | Actual | Notes |
-|-----------|--------|--------|--------|-------|
-| None | None | None | None | None |
+---
 
 ## Decisions / Inputs Needed
 
+### 🔴 Critical Decisions
+
 1. None
+
+### 🟡 Pending Confirmations
+
+1. None
+
+---
 
 ## Suggestions
 
+### 🎯 Strategic Recommendations
+
 1. None
+
+---
 
 ## Behind / Missed
 
 - None
+
+---
 
 ## Risks
 
@@ -57,33 +106,35 @@ None
 |------|-------|---------|--------|------------|-----|
 | None | None | None | None | None | None |
 
+---
+
 ## Patterns
 
 - None
 
-## Distraction / Noise
-
-- None
+---
 
 ## OKR Dashboard
 
 ### Status Legend
 
-- Red = urgent / behind / outcome at risk
-- Yellow = moving but incomplete
-- Green = on track
-- Blue = missing data
-- Gray = parked
+- 🔴 Red = urgent / behind / outcome at risk
+- 🟡 Yellow = moving but incomplete
+- 🟢 Green = on track
+- 🔵 Blue = missing data
+- ⚪ Gray = parked
 
 ### Objective: None
 
 - Status: None
-- Objective target: None
-- Objective actual: None
+- Target: None
+- Actual: None
 
 | Key Result | Metric Type | Target | Actual | Task Progress | Status | Data Needed |
 |------------|-------------|--------|--------|---------------|--------|-------------|
 | None | None | None | None | None | None | None |
+
+---
 
 ## Answers
 
