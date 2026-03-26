@@ -1,0 +1,41 @@
+---
+description: Chief Clarity project rules
+---
+
+# Code Quality Rules
+
+## No Sample User Data in Shippable Code
+
+**CRITICAL:** Never include real user data or sample user data in any shippable code files.
+
+**Applies to:**
+- Agent definitions (`agents/*.md`)
+- Python scripts (`*.py`)
+- Templates (`templates/*.md`)
+- Documentation examples
+- Code comments
+- Test fixtures
+- Any sample content directories (e.g., `sample/`)
+
+**Examples of FORBIDDEN content:**
+- Real names, dates, tasks, or events from user's life
+- Sample data that resembles real user information (e.g., "tax deadline March 25", "SAP interview", "Sofia's math exam")
+- Specific personal details in examples
+- Company names, interview names, family member names, and exact dates/times in examples
+
+**ALLOWED:**
+- Generic placeholders: `[User's question]`, `[Task name]`, `[Date]`
+- Abstract examples: `Task A`, `Project X`, `Deadline Y`
+- Structural examples without real content
+
+**Enforcement:**
+- Use placeholders in brackets: `[placeholder description]`
+- Use generic labels: `Task 1`, `Event A`, `Person X`
+- If example is needed, use clearly fictional data: "Example Corp meeting", "Project Alpha deadline"
+- Do not add or keep real-like scenario narratives in repo-tracked files; keep examples structural and generic
+
+**Rationale:**
+- Protects user privacy
+- Prevents data leakage in version control
+- Keeps codebase professional and reusable
+- Avoids confusion between example and real data

@@ -2,6 +2,84 @@
 
 Chief Clarity is a ChiefClarity-driven multi-agent system for turning messy daily notes into a structured execution plan. The user talks to ChiefClarity, ChiefClarity decides what needs to happen, worker agents do the analysis, and the writer produces the final markdown files.
 
+## 🚀 Version 3.0: Agent-Driven Architecture + Hybrid Data System
+
+**NEW:** Chief Clarity now uses an **agent-driven architecture** with a **hybrid data system** for scalability.
+
+### What Changed
+
+- **Before (v2.x):** Python script had hardcoded logic for file I/O, execution order, and prompts
+- **After (v3.0):** Agents read their markdown definitions and decide what to do
+- **NEW:** Three-layer data system (Markdown + Index + Database) for performance and scalability
+
+### Key Benefits
+
+- ✅ **No hardcoded logic** - All logic lives in agent markdown files
+- ✅ **Flexible workflows** - Agents decide execution order
+- ✅ **Easy to extend** - Add new agents by creating markdown files
+- ✅ **Easy to modify** - Change agent behavior by editing markdown
+- ✅ **True agent autonomy** - Agents control their own execution
+- ✅ **Scalable data** - Supports 100+ agents with hybrid architecture
+- ✅ **Fast performance** - Change detection skips unchanged files
+- ✅ **Queryable history** - SQLite database for analytics
+
+### Hybrid Data Architecture
+
+Chief Clarity uses a three-layer data system:
+
+**Layer 1: Markdown Files** (Human-readable)
+- `focus.md`, `calendar.md`, `tasks.md`, `OKR.md`
+- You can read and edit these files
+- Version control friendly (Git)
+
+**Layer 2: index.json** (Fast Metadata & Caching)
+- File metadata (size, last_modified, generated_by)
+- Change detection (skip unchanged files)
+- Search result caching (24-hour TTL)
+- Learned patterns storage
+
+**Layer 3: chiefclarity.db** (Queryable History)
+- Workflow execution logs
+- Agent performance tracking
+- Search history
+- Learned patterns evolution
+- Behavior metrics
+
+**Benefits:**
+- 2-3x faster on subsequent runs (change detection)
+- Foundation for future Learning Agent
+- Historical analytics and insights
+- No data loss (automatic backups)
+
+### Migration Status
+
+- **Current:** Hybrid approach - both legacy and new scripts available
+- **Legacy script:** `run_chiefclarity_legacy.py` (v2.x - menu-based)
+- **New script:** `run_chiefclarity.py` (v3.0 - natural language)
+- **Documentation:** See `MIGRATION_GUIDE.md` for details
+
+### Natural Language Interface
+
+Instead of selecting from a menu, just tell Chief Clarity what you want:
+
+```
+$ python run_chiefclarity.py
+
+What would you like Chief Clarity to do?
+Your request: Help me plan tomorrow
+
+[Orchestration agent interprets → executes prepare_tomorrow mode]
+✓ Check data/focus.md for your plan!
+```
+
+**Examples:**
+- "Help me plan tomorrow"
+- "Plan my day"
+- "Answer my questions"
+- "Should I prioritize task A or B?"
+
+See `docs/natural_language_interface.md` for full guide.
+
 ## Core Idea
 
 Chief Clarity is not a fixed pipeline first. It is a ChiefClarity-first system.
@@ -159,6 +237,23 @@ All other files are system-managed and should be treated as internal state unles
 - `data/companion_data.json`
 - `data/run_manifest.json`
 
+### Architecture files (v3.0)
+
+- `data/index.json`
+  - Fast metadata and caching layer
+  - File change detection
+  - Search result cache
+  - Learned patterns
+- `data/chiefclarity.db`
+  - SQLite database for history
+  - Workflow execution logs
+  - Agent performance tracking
+  - Analytics and insights
+- `data/logs/`
+  - Debug files (`_debug_*_response.txt`)
+  - Error diagnostics
+  - API response logs
+
 ### Topic Registry (NEW)
 
 - `data/topics.md`
@@ -196,7 +291,7 @@ Chief Clarity now includes a three-tier archival system with topic indexing for 
 - `data/ARCHIVAL_SYSTEM.md` - Complete archival system documentation
 
 **Key Features:**
-- **Topic Index:** Fast navigation to related entries by topic (Job Search, SaddleUp, Family, etc.)
+- **Topic Index:** Fast navigation to related entries by topic (Job Search, Project A, Family, etc.)
 - **Date Index:** Quick access to entries by date range
 - **Weekly Summaries:** Synthesized context across weeks without reading individual entries
 - **Automatic Rotation:** 7-day rotation (Sundays), 30-day rotation (first Sunday of month)
@@ -328,6 +423,83 @@ Drop optional supporting files into `data/context/`.
 ### Step 6 - Start using Chief Clarity
 
 Talk to Chief Clarity directly using `@cc_chiefclarity_agent.md` in your IDE. Chief Clarity will interpret your request and orchestrate the worker agents.
+
+## Automation Script (Standalone Execution)
+
+Chief Clarity now includes a Python automation script (`run_chiefclarity.py`) that executes the full multi-agent workflow using the Claude API, without requiring an IDE.
+
+### Features
+
+- **Interactive Menu** - Select mode without command-line arguments
+- **Full Agent Orchestration** - Executes all 4 agents sequentially (ChiefClarity → Intake → Planning → Writer)
+- **API Integration** - Uses Anthropic Claude API (claude-sonnet-4-5-20250929)
+- **Config File Support** - Store API key in `config.json` (gitignored for security)
+- **Automatic File Management** - Reads/writes all data files automatically
+
+### Setup
+
+**1. Install Python package:**
+```bash
+pip install anthropic
+```
+
+**2. Create `config.json` in the root directory:**
+```json
+{"ANTHROPIC_API_KEY": "sk-ant-api03-your-actual-key-here"}
+```
+
+Get your API key from https://console.anthropic.com/
+
+**Note:** `config.json` is automatically gitignored to protect your API key.
+
+**3. Run the script:**
+```bash
+# Interactive menu
+python run_chiefclarity.py
+
+# Direct mode execution
+python run_chiefclarity.py prepare_week
+```
+
+### Available Modes
+
+1. **Prepare Today** - Fast daily planning for today
+2. **Prepare Tomorrow** - Evening planning for tomorrow
+3. **Prepare Week** - Weekly view with calendar and priorities
+4. **Full Analysis** - Deep refresh and comprehensive analysis
+5. **Answer Input Questions** - Process questions from input.txt
+
+### Cost & Performance
+
+- **Cost:** ~$0.50-$1.00 per run (Claude API usage)
+- **Time:** ~30-60 seconds for full workflow
+- **Requirements:** Active Anthropic account with credits
+
+### Output Files
+
+The script generates:
+- `data/run_manifest.json` - Execution plan
+- `data/calendar.md` - Updated calendar (if temporal expressions found)
+- `data/tasks.md` - Updated tasks (if deadlines found)
+- `data/structured_input.md` - Classified input
+- `data/intake_data.json` - Intake data
+- `data/plan_data.md` - Planning analysis
+- `data/focus.md` - Final executive dashboard
+
+### Troubleshooting
+
+**API Key Issues:**
+- Make sure `config.json` exists in the root directory
+- Verify API key is valid at https://console.anthropic.com/
+- Check that you have credits in your Anthropic account
+
+**Model Not Found:**
+- The script uses `claude-sonnet-4-5-20250929`
+- If unavailable, check your account's available models
+
+**Environment Variable Conflicts:**
+- The script prioritizes `config.json` over environment variables
+- Remove stale env vars: `Remove-Item Env:ANTHROPIC_API_KEY` (PowerShell)
 
 ## How to Use Chief Clarity
 

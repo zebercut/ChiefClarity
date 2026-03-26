@@ -1,9 +1,9 @@
 ---
 type: answers
-created: 2026-03-13, 00:00
-modified: 2026-03-13, 00:00
+created: YYYY-MM-DD, HH:MM
+modified: YYYY-MM-DD, HH:MM
 append_only: true
-timezone: America/Toronto
+timezone: [Timezone]
 ---
 
 # Answers (Chief Clarity Q&A Log)
@@ -16,7 +16,7 @@ Questions are routed by ChiefClarity and answered by the Planning Agent, the Com
 
 ## Template
 
-### 2026-03-13T00:00:00-05:00
+### YYYY-MM-DDTHH:MM:SS-00:00
 - question_id: Q-001
 - route: planning
 - question: "..."

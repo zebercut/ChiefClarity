@@ -31,6 +31,23 @@ env/
 # Personal data - exclude from version control
 data/
 
+# Restored / copied personal data folders
+data-restored/
+data - Copy/
+
+# Backup directory (outside data/)
+data_backup/
+
+# Deprecated files (migrated to JSON)
+data/tasks.md
+data/calendar.md
+
+# API keys and secrets - NEVER commit these
+config.json
+
+# Local databases / artifacts
+*.db
+
 # OS files
 .DS_Store
 Thumbs.db
