@@ -10,7 +10,8 @@ Agents decide what to read, what to write, and what to do next.
 import os
 import sys
 import json
-from datetime import datetime
+import re
+from datetime import datetime, timezone
 from pathlib import Path
 import anthropic
 from data_manager import DataManager
@@ -31,11 +32,17 @@ def console_info(message: str) -> None:
 def human_stage_for_agent(agent_name: str, mode: str) -> str:
     if agent_name == "cc_chiefclarity_agent":
         return "Understanding your request…"
+    if agent_name == "cc_intake_agent":
+        return "Processing your input…"
     if agent_name == "cc_planning_agent":
-        return "Analyzing your data and compiling findings…"
+        return "Analyzing your data…"
+    if agent_name == "cc_companion_agent":
+        return "Checking your state…"
+    if agent_name == "cc_feedback_agent":
+        return "Processing feedback…"
     if agent_name == "cc_writer_agent":
         if mode in ["answer_input_questions", "answer_one_question"]:
-            return "Writing a clear answer…"
+            return "Writing answer…"
         return "Writing your plan…"
     return "Working…"
 
@@ -214,7 +221,12 @@ def _default_token_bounds(agent_name: str) -> tuple[int, int, int]:
     if agent_name == "cc_planning_agent":
         return 16000, 6000, 32000
     if agent_name == "cc_writer_agent":
-        return 6000, 2000, 12000
+        # focus.md alone is ~14KB + input.txt + topics = easily 20KB+ output
+        return 16000, 8000, 24000
+    if agent_name == "cc_intake_agent":
+        # Produces calendar.json + tasks.json + structured_input.md + intake_data.json
+        # + content_index.json + archives = large combined output
+        return 16000, 8000, 32000
     if agent_name == "cc_chiefclarity_agent":
         return 4000, 1500, 8000
     return 8000, 2000, 16000
@@ -388,6 +400,249 @@ def _repair_json_strings(text: str) -> str:
     return ''.join(result)
 
 
+def _md_to_html(md: str) -> str:
+    """Convert focus.md markdown to styled HTML. Zero external dependencies."""
+
+    html_lines: list[str] = []
+    lines = md.split("\n")
+    in_table = False
+    in_list: str | None = None  # "ul" or "ol" or None
+    i = 0
+
+    def inline(text: str) -> str:
+        """Process inline markdown: bold, italic, links, code, emoji."""
+        # Links [text](url)
+        text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', text)
+        # Bold+italic ***text***
+        text = re.sub(r'\*\*\*(.+?)\*\*\*', r'<strong><em>\1</em></strong>', text)
+        # Bold **text**
+        text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+        # Italic *text*
+        text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
+        # Inline code `text`
+        text = re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
+        return text
+
+    def close_list():
+        nonlocal in_list
+        if in_list:
+            html_lines.append(f"</{in_list}>")
+            in_list = None
+
+    def close_table():
+        nonlocal in_table
+        if in_table:
+            html_lines.append("</tbody></table></div>")
+            in_table = False
+
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        # Blank line
+        if not stripped:
+            # Don't close an ordered list if the next non-blank line continues it
+            if in_list == "ol":
+                # Peek ahead for continuation
+                j = i + 1
+                while j < len(lines) and not lines[j].strip():
+                    j += 1
+                if j < len(lines) and re.match(r'^\s*\d+\.\s+', lines[j]):
+                    i += 1
+                    continue
+            close_list()
+            close_table()
+            i += 1
+            continue
+
+        # Horizontal rule
+        if stripped == "---":
+            close_list()
+            close_table()
+            html_lines.append("<hr>")
+            i += 1
+            continue
+
+        # Headers
+        hm = re.match(r'^(#{1,6})\s+(.*)', stripped)
+        if hm:
+            close_list()
+            close_table()
+            level = len(hm.group(1))
+            text = inline(hm.group(2))
+            slug = re.sub(r'[^a-z0-9]+', '-', hm.group(2).lower()).strip('-')
+            html_lines.append(f'<h{level} id="{slug}">{text}</h{level}>')
+            i += 1
+            continue
+
+        # Table row
+        if stripped.startswith("|"):
+            cols = [c.strip() for c in stripped.strip("|").split("|")]
+            if not in_table:
+                # Check if next line is separator
+                if i + 1 < len(lines) and re.match(r'^\s*\|[\s\-:|]+\|', lines[i + 1]):
+                    close_list()
+                    in_table = True
+                    html_lines.append('<div class="table-wrap"><table><thead><tr>')
+                    for col in cols:
+                        html_lines.append(f"<th>{inline(col)}</th>")
+                    html_lines.append("</tr></thead><tbody>")
+                    i += 2  # skip header + separator
+                    continue
+            # Body row
+            html_lines.append("<tr>")
+            for col in cols:
+                html_lines.append(f"<td>{inline(col)}</td>")
+            html_lines.append("</tr>")
+            i += 1
+            continue
+
+        # Unordered list item (indented = sub-bullet)
+        lm = re.match(r'^(\s*)[-*]\s+(.*)', line)
+        if lm:
+            close_table()
+            indent = len(lm.group(1))
+            if indent >= 2 and in_list == "ol":
+                # Sub-bullet under an ordered list item — keep it inside <li>
+                html_lines.append(f"<br>&nbsp;&nbsp;— {inline(lm.group(2))}")
+            else:
+                if in_list != "ul":
+                    close_list()
+                    in_list = "ul"
+                    html_lines.append("<ul>")
+                html_lines.append(f"<li>{inline(lm.group(2))}</li>")
+            i += 1
+            continue
+
+        # Ordered list item
+        om = re.match(r'^(\s*)\d+\.\s+(.*)', line)
+        if om:
+            close_table()
+            if in_list != "ol":
+                close_list()
+                in_list = "ol"
+                html_lines.append("<ol>")
+            html_lines.append(f"<li>{inline(om.group(2))}")
+            # Peek ahead for indented sub-bullets — keep them in this <li>
+            j = i + 1
+            while j < len(lines):
+                sub = re.match(r'^(\s{2,})[-*]\s+(.*)', lines[j])
+                if sub:
+                    html_lines.append(f"<br>&nbsp;&nbsp;— {inline(sub.group(2))}")
+                    j += 1
+                else:
+                    break
+            html_lines.append("</li>")
+            i = j
+            continue
+
+        # Paragraph
+        close_list()
+        close_table()
+        html_lines.append(f"<p>{inline(stripped)}</p>")
+        i += 1
+
+    close_list()
+    close_table()
+    return "\n".join(html_lines)
+
+
+_FOCUS_HTML_TEMPLATE = """\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Focus — {date}</title>
+<style>
+:root {{
+  --bg: #0f172a; --surface: #1e293b; --border: #334155;
+  --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8;
+  --green: #4ade80; --yellow: #facc15; --red: #f87171;
+  --radius: 8px;
+}}
+@media (prefers-color-scheme: light) {{
+  :root {{
+    --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0;
+    --text: #1e293b; --muted: #64748b; --accent: #0284c7;
+    --green: #16a34a; --yellow: #ca8a04; --red: #dc2626;
+  }}
+}}
+*, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+body {{
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg); color: var(--text);
+  line-height: 1.6; padding: 1.5rem; max-width: 52rem; margin: 0 auto;
+}}
+h1 {{ font-size: 1.8rem; margin: 1.5rem 0 0.5rem; color: var(--accent); }}
+h2 {{ font-size: 1.35rem; margin: 1.8rem 0 0.5rem; padding-bottom: 0.3rem; border-bottom: 1px solid var(--border); }}
+h3 {{ font-size: 1.1rem; margin: 1.2rem 0 0.4rem; }}
+h4 {{ font-size: 1rem; margin: 1rem 0 0.3rem; color: var(--muted); }}
+p {{ margin: 0.4rem 0; }}
+hr {{ border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }}
+a {{ color: var(--accent); text-decoration: none; }}
+a:hover {{ text-decoration: underline; }}
+strong {{ color: var(--text); }}
+code {{ background: var(--surface); padding: 0.15em 0.35em; border-radius: 3px; font-size: 0.9em; }}
+ul, ol {{ margin: 0.3rem 0 0.3rem 1.5rem; }}
+li {{ margin: 0.2rem 0; }}
+li li {{ margin: 0; }}
+.table-wrap {{ overflow-x: auto; margin: 0.8rem 0; }}
+table {{ width: 100%; border-collapse: collapse; font-size: 0.92rem; }}
+th, td {{ padding: 0.45rem 0.7rem; border: 1px solid var(--border); text-align: left; }}
+th {{ background: var(--surface); font-weight: 600; white-space: nowrap; }}
+tr:nth-child(even) {{ background: var(--surface); }}
+/* Status pills */
+.focus-meta {{ color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem; }}
+@media print {{
+  body {{ background: #fff; color: #000; max-width: 100%; padding: 0.5cm; }}
+  h1 {{ color: #0284c7; }}
+  th {{ background: #f1f5f9; }}
+}}
+@media (max-width: 600px) {{
+  body {{ padding: 0.75rem; }}
+  table {{ font-size: 0.82rem; }}
+  th, td {{ padding: 0.3rem 0.4rem; }}
+}}
+</style>
+</head>
+<body>
+<p class="focus-meta">Generated {timestamp} &middot; Chief Clarity</p>
+{body}
+</body>
+</html>
+"""
+
+
+def generate_focus_html(data_dir: Path) -> bool:
+    """Convert focus.md to focus.html. Returns True on success."""
+    focus_md_path = data_dir / "focus.md"
+    if not focus_md_path.exists():
+        return False
+    try:
+        md_content = focus_md_path.read_text(encoding="utf-8")
+        body_html = _md_to_html(md_content)
+
+        # Extract date from first h2 or use today
+        date_match = re.search(r'(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+'
+                               r'(?:January|February|March|April|May|June|July|August|September|'
+                               r'October|November|December)\s+\d{1,2}', md_content)
+        date_str = date_match.group(0) if date_match else datetime.now().strftime("%B %d, %Y")
+
+        timestamp = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+
+        html = _FOCUS_HTML_TEMPLATE.format(
+            date=date_str,
+            timestamp=timestamp,
+            body=body_html,
+        )
+        (data_dir / "focus.html").write_text(html, encoding="utf-8")
+        return True
+    except Exception as e:
+        console_debug(f"  ⚠ HTML generation failed: {e}")
+        return False
+
+
 def extract_first_json_object(text: str) -> str:
     """Extract the first balanced JSON object from text.
 
@@ -468,9 +723,17 @@ AGENT DEFINITION:
 {agent_definition}
 
 EXECUTION CONTEXT:
-- Current time: {datetime.now().isoformat()}
+- System time (UTC): {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S+00:00 (%A)')}
 - Available files in data/: {', '.join(list_available_files())}
 - Working directory: data/
+
+DATE AUTHORITY RULE — CRITICAL:
+- The system time above is UTC. The user's timezone is NOT UTC.
+- ALWAYS read run_manifest.json → current_time_user_tz for the authoritative current date and time in the user's timezone.
+- Use run_manifest.json → current_time_user_tz for ALL date calculations: "today", "tomorrow", "yesterday", deadlines, agenda headers.
+- NEVER use system UTC time for date calculations or date labels in any output.
+- If run_manifest.json is not yet available (chiefclarity first run), read user_profile.md → timezone to interpret the request correctly.
+- If the UTC-to-local conversion crosses midnight, adjust the date accordingly.
 
 YOU DECIDE:
 1. Which files to read (if any)
@@ -491,13 +754,25 @@ OUTPUT FORMAT — always use an "outputs" object with exact filename keys:
 {{
     "status": "completed",
     "next_agent": "agent_name_or_null",
-    "message": "Brief status message",
+    "message": "One-sentence summary of what was done",
+    "steps": [
+        "Step 1: what you did (e.g. Read user_profile.md → Farzin, America/Toronto)",
+        "Step 2: what you did (e.g. Detected mode: prepare_today at 7:28 AM morning)",
+        "Step 3: what you output (e.g. Wrote run_manifest.json with run_id run_20260327_072845)"
+    ],
     "console_output": "answer text (answer modes only — omit otherwise)",
     "outputs": {{
         "some_file.json": {{"key": "value"}},
         "some_file.md": "markdown string content"
     }}
 }}
+
+STEPS RULES:
+- Always populate "steps" with 3–8 short statements about what happened
+- Write for a non-technical person — no file names, no JSON keys, no variable names, no system jargon
+- Focus on outcomes and meaning, not on technical actions: "Your 3 goals reviewed" not "Read OKR.md"
+- Use the user's name and plain everyday language: "Sorted your inbox notes" not "Classified intake items"
+- Emojis are fine when helpful (🔴 urgent, ✓ done, etc.)
 
 CRITICAL JSON RULES:
 - "outputs" keys are exact filenames (e.g. "calendar.json", "focus.md", "tasks.json")
@@ -520,37 +795,48 @@ CRITICAL JSON RULES:
     
     # Check index for changed files (optimization)
     changed_files = data_manager.get_changed_files()
-    
-    # Also include common files agents typically need
-    # NOTE: For CLI Q&A (`answer_one_question` with `question_text` in run_manifest.json),
-    # input.txt is not required.
-    question_only_mode = False
+
+    # Per-agent baseline context — each agent gets only what it needs.
+    # Agents also receive any files written by previous agents automatically (above).
+    # NOTE: .json files take priority over .md duplicates (calendar.json > calendar.md, tasks.json > tasks.md).
+    _per_agent_files = {
+        "cc_chiefclarity_agent": ["user_profile.md", "content_index.json"],
+        "cc_intake_agent":       ["user_profile.md", "run_manifest.json", "input.txt",
+                                   "calendar.json", "tasks.json", "topic_registry.json",
+                                   "structured_input.md"],
+        "cc_planning_agent":     ["user_profile.md", "run_manifest.json", "OKR.md",
+                                   "structured_input.md", "intake_data.json",
+                                   "calendar.json", "tasks.json",
+                                   "history_digest.md", "context_digest.md",
+                                   "feedback_memory.json", "topic_registry.json"],
+        "cc_companion_agent":    ["user_profile.md", "run_manifest.json",
+                                   "structured_input.md", "intake_data.json",
+                                   "history_digest.md", "context_digest.md"],
+        "cc_writer_agent":       ["user_profile.md", "run_manifest.json", "input.txt",
+                                   "plan_data.json", "feedback_memory.json",
+                                   "topic_registry.json",
+                                   "calendar.json", "tasks.json"],
+        "cc_feedback_agent":     ["user_profile.md", "run_manifest.json",
+                                   "input.txt", "feedback_memory.json", "chat_history.md"],
+    }
+
+    # Resolve common_files: per-agent baseline is always included.
+    # Orchestrator's files_needed can ADD extra files but never restrict the baseline.
     files_needed = []
     try:
         manifest_content = read_file("run_manifest.json")
         if manifest_content:
             manifest = json.loads(manifest_content)
-            question_only_mode = (
-                manifest.get("mode") == "answer_one_question"
-                and bool(str(manifest.get("question_text", "")).strip())
-            )
             files_needed = manifest.get("files_needed", [])
     except Exception:
-        question_only_mode = False
+        pass
 
-    if question_only_mode:
-        if files_needed:
-            # Load only files specified in files_needed for Q&A
-            common_files = files_needed
-        else:
-            # Minimal safe fallback to reduce stale/incorrect answers when orchestrator omitted files_needed
-            common_files = ["user_profile.md", "run_manifest.json", "topic_registry.json", "focus.md"]
-    else:
-        # Default behavior for planning modes
-        common_files = ["user_profile.md", "run_manifest.json", 
-                        "calendar.md", "tasks.md", "OKR.md", "structured_input.md"]
-        if not question_only_mode:
-            common_files.insert(1, "input.txt")
+    common_files = list(_per_agent_files.get(agent_name,
+                           ["user_profile.md", "run_manifest.json"]))
+    # Orchestrator can add extra files via manifest, but never narrow the baseline
+    for f in files_needed:
+        if f not in common_files:
+            common_files.append(f)
     for filename in common_files:
         if filename not in available_files:
             # Only read if changed or not in cache
@@ -713,7 +999,16 @@ Output JSON with your decisions and outputs.
         console_debug(f"  → Status: {result.get('status', 'unknown')}")
         if result.get("message"):
             console_debug(f"  → {result['message']}")
-        
+
+        # Print progress steps — always show up to 4; CC_VERBOSE shows all
+        steps = result.get("steps") or []
+        if isinstance(steps, list) and steps:
+            visible = steps if CC_VERBOSE else steps[:4]
+            for step in visible:
+                print(f"  · {step}")
+            if not CC_VERBOSE and len(steps) > 4:
+                print(f"  · … +{len(steps) - 4} more (set CC_VERBOSE=1 to see all)")
+
         return result
         
     except json.JSONDecodeError as e:
@@ -1167,24 +1462,28 @@ def main():
             print("\n⚠️  No backup available (read-only operation)")
     print("=" * 60)
     if workflow_success:
+        # Generate HTML version of focus.md for easy viewing
+        if generate_focus_html(BASE_DIR):
+            console_debug("  ✓ focus.html generated")
+
         print("\nGenerated files:")
-        
+
         # List generated files
         for file in sorted(BASE_DIR.glob("*")):
             if file.is_file():
                 print(f"  - data/{file.name}")
-        
+
         # Check mode to give appropriate message
         manifest_path = BASE_DIR / "run_manifest.json"
         if manifest_path.exists():
             with open(manifest_path, 'r', encoding='utf-8') as f:
                 manifest = json.load(f)
                 mode = manifest.get("mode", "")
-                
+
                 if mode in ["answer_input_questions", "answer_one_question"]:
                     print("\n✓ Answers displayed above and saved to data/chat_history.md")
                 else:
-                    print("\n✓ Check data/focus.md for your plan!")
+                    print("\n✓ Open data/focus.html in your browser for today's plan!")
     else:
         print("\n⚠️  No files were generated due to workflow failure.")
         print("⚠️  Data has been restored to pre-workflow state.")

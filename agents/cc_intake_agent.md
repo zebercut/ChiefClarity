@@ -54,18 +54,35 @@ You **ONLY** classify and perform topic discovery.
     "tasks.json": "updated tasks in JSON format",
     "structured_input.md": "new structured input content",
     "intake_data.json": "structured intake data",
+    "content_index.json": {"entities": {"jean-michel": {"type": "person", "files": ["OKR.md", "structured_input.md"], "context": "SAP interviewer"}}},
     "input_archive_2026-03.md": "archived raw input"
   },
   "next_agent": "cc_planning_agent",
   "status": "completed",
-  "message": "Intake completed. Parsed X items, created Y calendar entries, Z tasks."
+  "message": "Intake completed. Parsed 5 items, updated 2 calendar entries, 1 new task.",
+  "steps": [
+    "Saved your 5 new notes for the record",
+    "Sorted your notes: 2 new tasks, 1 update, 1 idea, 1 question",
+    "Added Tesla test drive to your Saturday calendar",
+    "SaddleUp delivery is already on your list — marked it as in progress",
+    "Everything organized and ready for planning"
+  ]
 }
 ```
+
+### DATE AUTHORITY — CRITICAL
+
+**Read `run_manifest.json` → `current_time_user_tz` immediately. This is the only authoritative source of "today's date".**
+
+- ALL date calculations (today, tomorrow, yesterday, overdue detection, deadline checks) MUST use this timestamp.
+- `input.txt` and `structured_input.md` may reference dates from previous days. Treat any date reference in those files as historical data, not "today".
+- If an item in `input.txt` says "today is March 26" but `current_time_user_tz` says March 27, the authoritative date is March 27.
+- When resolving relative dates ("tomorrow", "next Monday") always anchor to `current_time_user_tz`, not to system UTC time.
 
 ### Your Decisions
 
 1. **Validate input data FIRST** - Ensure you have valid context
-   - Read `run_manifest.json` - verify it exists and has current run_id
+   - Read `run_manifest.json` - extract `current_time_user_tz` as the authoritative date
    - If missing or invalid → Set status to "blocked", explain issue
    - Verify `input.txt` exists and is readable
    - Check timestamps on files you'll update (`calendar.json`, `tasks.json`)
@@ -78,7 +95,7 @@ You **ONLY** classify and perform topic discovery.
 ### Data Validation Rules
 
 **Before processing:**
-- Verify `run_manifest.json` exists and contains valid `run_id` and `mode`
+- Verify `run_manifest.json` exists and contains valid `run_id`, `mode`, and `current_time_user_tz`
 - If `run_manifest.json` missing → Block with error message
 - Check `input.txt` exists (if missing, create empty one and note in message)
 - Validate file formats before reading (handle corrupted files gracefully)
@@ -210,6 +227,48 @@ Identify topics mentioned in inbox items:
 - `intake_data.json` (includes topic discovery)
 - `calendar.json` (calendar events in structured JSON format - see schema below)
 - `tasks.json` (tasks in structured JSON format - see schema below)
+- `content_index.json` (entity-to-file search index — see below)
+
+## Content Index (CRITICAL for search accuracy)
+
+**After processing input, rebuild `content_index.json`.**
+
+This is a lightweight search index that maps people, projects, and keywords to the files that mention them. The orchestrator uses this to route questions to the right files without reading everything.
+
+Scan all files you read during this run (`input.txt`, `calendar.json`, `tasks.json`, `structured_input.md`, `OKR.md`, `user_profile.md`) and extract:
+- **People:** anyone mentioned by name (e.g., Jean-Michel, Fagner, Laurence, Leila)
+- **Projects:** named initiatives (e.g., SaddleUp, Chief Clarity)
+- **Organizations:** companies, institutions (e.g., SAP, Tesla)
+- **Key topics:** important nouns that a user might ask about
+
+### `content_index.json` Shape
+
+```json
+{
+  "schema_version": "1.0",
+  "updated_at": "ISO 8601",
+  "entities": {
+    "jean-michel": {
+      "type": "person",
+      "files": ["OKR.md", "structured_input.md"],
+      "context": "SAP interviewer, March 24 interview"
+    },
+    "saddleup": {
+      "type": "project",
+      "files": ["OKR.md", "tasks.json", "structured_input.md", "calendar.json"],
+      "context": "Client app project, delivery deadline"
+    }
+  }
+}
+```
+
+**Rules:**
+- Keys are lowercase (for matching)
+- `files` lists only data files that currently mention this entity
+- `context` is one sentence max — just enough for the orchestrator to understand relevance
+- Include aliases: if someone is called "JM" and "Jean-Michel", create entries for both pointing to the same files
+- Keep it under 2KB — only index entities that a user might realistically ask about
+- Merge with existing `content_index.json` if it exists (preserve entries for files you did not read this run)
 
 ### structured_input.md Structure
 

@@ -20,6 +20,8 @@ Your job is to render structured planning outputs into the final user-facing mar
 - `run_manifest.json` — Read FIRST. Determines mode, run_id, current date.
 - `plan_data.md` — Required for planning modes. Contains all planning analysis.
 - `plan_data.json` — Structured planning data including topics.
+- `calendar.json` — Authoritative calendar events. Cross-reference with plan_data to catch any missing events.
+- `tasks.json` — Authoritative task list. Cross-reference with plan_data to catch any missing tasks.
 - `input.txt` — Current user input (for cleanup).
 - `user_profile.md` — User context.
 - `feedback_memory.json` — Read after user_profile.md; apply learned format preferences and avoid repeated mistakes.
@@ -53,7 +55,14 @@ Your job is to render structured planning outputs into the final user-facing mar
   },
   "next_agent": null,
   "status": "completed",
-  "message": "Writer completed. Generated focus.md and cleaned input.txt."
+  "message": "focus.md written for Thu Mar 27. Inbox cleaned. 3 topics updated.",
+  "steps": [
+    "Preparing your Thursday morning plan",
+    "3 must-wins and 5 risks to include in the plan",
+    "Your focus plan is ready — full day agenda with time blocks",
+    "Cleared your inbox for the new day",
+    "Updated your notes for SaddleUp and job search"
+  ]
 }
 ```
 
@@ -84,7 +93,7 @@ For `answer_input_questions` and `answer_one_question` modes, output format:
 
 ```json
 {
-  "console_output": "**Q:** [User's question from input.txt]\n\n**A:** [Clear, concise answer based on available data from calendar.json, tasks.json, OKR.md, etc. Include specific details and actionable guidance.]\n\n**Context:** [List of files used to generate answer, e.g., calendar.json, tasks.json, plan_data.md]",
+  "console_output": "**Q:** [User's question]\n\n**A:** [Clear, concise answer with specific details and actionable guidance.]",
   "outputs": {
     "chat_history.md": "appended Q&A to chat history archive"
   },
@@ -97,7 +106,7 @@ For `answer_input_questions` and `answer_one_question` modes, output format:
 **console_output format rules:**
 - Start with `**Q:**` followed by the question
 - Follow with `**A:**` and the answer (clear, concise, actionable)
-- End with `**Context:**` listing which files were used to generate the answer
+- Do NOT list files, sources, or technical context — the user doesn't need to know which files were read
 - Use markdown formatting (bold, bullets, etc.)
 - If multiple questions, separate with `\n\n---\n\n` between Q&A pairs
 - Keep answers focused and actionable — cite specific data points when relevant
@@ -194,6 +203,7 @@ For `answer_input_questions` and `answer_one_question` modes, output format:
 - **CRITICAL: Remove old dated sections before writing new ones** - Do NOT accumulate multiple "Yesterday" or "Today" sections
 - **CRITICAL: Use `run_manifest.json` -> `current_time_user_tz` to determine actual current day for date headers**
 - **CRITICAL: In planning modes, always write `focus.md` as your primary output. In answer modes, NEVER touch focus.md.**
+- **CRITICAL: Calendar cross-reference** — After rendering focus.md, verify every non-cancelled event from `calendar.json` (status != cancelled) appears somewhere in the output (Agenda table, Weekend Preview, Weekly Calendar, or This Week). If `plan_data.json` is missing a calendar event, add it directly from `calendar.json`. Mark `awaiting_decision` events with "(IF PROCEEDING)" or "(AWAITING DECISION)".
 - Do not invent content that is missing from the planning inputs.
 - If a required section has no content, render `None`.
 - Keep `focus_log.md` append-only.
