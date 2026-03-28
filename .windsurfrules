@@ -19,7 +19,7 @@ description: Chief Clarity project rules
 
 **Examples of FORBIDDEN content:**
 - Real names, dates, tasks, or events from user's life
-- Sample data that resembles real user information (e.g., "tax deadline March 25", "SAP interview", "Sofia's math exam")
+- Sample data that resembles real user information (e.g., "tax deadline March 25", "Prep for Job Interview", "Robert school meeting")
 - Specific personal details in examples
 - Company names, interview names, family member names, and exact dates/times in examples
 

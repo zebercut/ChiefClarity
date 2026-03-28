@@ -54,7 +54,7 @@ You **ONLY** classify and perform topic discovery.
     "tasks.json": "updated tasks in JSON format",
     "structured_input.md": "new structured input content",
     "intake_data.json": "structured intake data",
-    "content_index.json": {"entities": {"jean-michel": {"type": "person", "files": ["OKR.md", "structured_input.md"], "context": "SAP interviewer"}}},
+    "content_index.json": {"entities": {"person-a": {"type": "person", "files": ["OKR.md", "structured_input.md"], "context": "Example Corp interviewer"}}},
     "input_archive_2026-03.md": "archived raw input"
   },
   "next_agent": "cc_planning_agent",
@@ -63,9 +63,40 @@ You **ONLY** classify and perform topic discovery.
   "steps": [
     "Saved your 5 new notes for the record",
     "Sorted your notes: 2 new tasks, 1 update, 1 idea, 1 question",
-    "Added Tesla test drive to your Saturday calendar",
-    "SaddleUp delivery is already on your list — marked it as in progress",
+    "Added showroom visit to your Saturday calendar",
+    "Project Alpha delivery is already on your list — marked it as in progress",
     "Everything organized and ready for planning"
+  ]
+}
+```
+
+### Quick Update Mode
+
+**When `run_manifest.json` → `mode` is `quick_update`:**
+
+This is a lightweight pass. The user added a note, task, or update — not a full inbox.
+
+1. Read the `user_note` field from `run_manifest.json` — this is what the user said
+2. Parse it: extract events, tasks, updates, cancellations
+3. Update `calendar.json` and/or `tasks.json` as needed
+4. **Set `next_agent: null`** — no planning, no writer
+5. Include `console_output` confirming what you did (e.g., "Added delivery appointment to Monday at 4 PM. Updated calendar.")
+6. **Skip** full archival, rotation checks, structured_input.md rebuild, and topic discovery
+7. Keep output small — only the files you actually changed
+
+```json
+{
+  "outputs": {
+    "calendar.json": { ... updated ... }
+  },
+  "console_output": "Added delivery to Monday at 4 PM. Noted positive feedback on the visit.",
+  "next_agent": null,
+  "status": "completed",
+  "message": "Quick update: 1 calendar event updated.",
+  "steps": [
+    "Captured your showroom visit note",
+    "Rescheduled delivery to Monday at 4 PM",
+    "Noted positive feedback on the visit"
   ]
 }
 ```
@@ -236,9 +267,9 @@ Identify topics mentioned in inbox items:
 This is a lightweight search index that maps people, projects, and keywords to the files that mention them. The orchestrator uses this to route questions to the right files without reading everything.
 
 Scan all files you read during this run (`input.txt`, `calendar.json`, `tasks.json`, `structured_input.md`, `OKR.md`, `user_profile.md`) and extract:
-- **People:** anyone mentioned by name (e.g., Jean-Michel, Fagner, Laurence, Leila)
-- **Projects:** named initiatives (e.g., SaddleUp, Chief Clarity)
-- **Organizations:** companies, institutions (e.g., SAP, Tesla)
+- **People:** anyone mentioned by name (e.g., Person A, Person B)
+- **Projects:** named initiatives (e.g., Project Alpha, Project Beta)
+- **Organizations:** companies, institutions (e.g., Example Corp, Acme Inc)
 - **Key topics:** important nouns that a user might ask about
 
 ### `content_index.json` Shape
@@ -248,12 +279,12 @@ Scan all files you read during this run (`input.txt`, `calendar.json`, `tasks.js
   "schema_version": "1.0",
   "updated_at": "ISO 8601",
   "entities": {
-    "jean-michel": {
+    "person-a": {
       "type": "person",
       "files": ["OKR.md", "structured_input.md"],
-      "context": "SAP interviewer, March 24 interview"
+      "context": "Example Corp interviewer"
     },
-    "saddleup": {
+    "project-alpha": {
       "type": "project",
       "files": ["OKR.md", "tasks.json", "structured_input.md", "calendar.json"],
       "context": "Client app project, delivery deadline"
@@ -266,7 +297,7 @@ Scan all files you read during this run (`input.txt`, `calendar.json`, `tasks.js
 - Keys are lowercase (for matching)
 - `files` lists only data files that currently mention this entity
 - `context` is one sentence max — just enough for the orchestrator to understand relevance
-- Include aliases: if someone is called "JM" and "Jean-Michel", create entries for both pointing to the same files
+- Include aliases: if someone is called by a nickname and full name, create entries for both pointing to the same files
 - Keep it under 2KB — only index entities that a user might realistically ask about
 - Merge with existing `content_index.json` if it exists (preserve entries for files you did not read this run)
 

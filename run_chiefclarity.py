@@ -12,6 +12,7 @@ import sys
 import json
 import re
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 import anthropic
 from data_manager import DataManager
@@ -769,6 +770,7 @@ OUTPUT FORMAT — always use an "outputs" object with exact filename keys:
 
 STEPS RULES:
 - Always populate "steps" with 3–8 short statements about what happened
+- Do NOT include greetings or time announcements in steps — the system handles that at startup
 - Write for a non-technical person — no file names, no JSON keys, no variable names, no system jargon
 - Focus on outcomes and meaning, not on technical actions: "Your 3 goals reviewed" not "Read OKR.md"
 - Use the user's name and plain everyday language: "Sorted your inbox notes" not "Classified intake items"
@@ -784,23 +786,29 @@ CRITICAL JSON RULES:
 """
     
     # Collect files that should be available to this agent
-    # Include files from previous agent results
     available_files = {}
+
+    # Session cache is the source of truth — updated on every read and write.
+    # Only fall back to disk if a file isn't cached yet.
+    file_cache = context.get("file_cache", {})
+
+    # Include files written by previous agents in this turn (from cache)
     for key, value in context.items():
         if isinstance(value, dict) and "files_written" in value:
             for filename in value["files_written"]:
-                content = read_file(filename)
-                if content:
-                    available_files[filename] = content
-    
-    # Check index for changed files (optimization)
-    changed_files = data_manager.get_changed_files()
+                if filename in file_cache:
+                    available_files[filename] = file_cache[filename]
+                else:
+                    content = read_file(filename)
+                    if content:
+                        available_files[filename] = content
+                        file_cache[filename] = content
 
     # Per-agent baseline context — each agent gets only what it needs.
-    # Agents also receive any files written by previous agents automatically (above).
     # NOTE: .json files take priority over .md duplicates (calendar.json > calendar.md, tasks.json > tasks.md).
     _per_agent_files = {
-        "cc_chiefclarity_agent": ["user_profile.md", "content_index.json"],
+        "cc_chiefclarity_agent": ["user_profile.md", "content_index.json",
+                                   "calendar.json", "tasks.json", "OKR.md"],
         "cc_intake_agent":       ["user_profile.md", "run_manifest.json", "input.txt",
                                    "calendar.json", "tasks.json", "topic_registry.json",
                                    "structured_input.md"],
@@ -823,39 +831,45 @@ CRITICAL JSON RULES:
     # Resolve common_files: per-agent baseline is always included.
     # Orchestrator's files_needed can ADD extra files but never restrict the baseline.
     files_needed = []
-    try:
+    manifest_content = file_cache.get("run_manifest.json")
+    if not manifest_content:
         manifest_content = read_file("run_manifest.json")
         if manifest_content:
+            file_cache["run_manifest.json"] = manifest_content
+    if manifest_content:
+        try:
             manifest = json.loads(manifest_content)
             files_needed = manifest.get("files_needed", [])
-    except Exception:
-        pass
+        except Exception:
+            pass
 
     common_files = list(_per_agent_files.get(agent_name,
                            ["user_profile.md", "run_manifest.json"]))
-    # Orchestrator can add extra files via manifest, but never narrow the baseline
     for f in files_needed:
         if f not in common_files:
             common_files.append(f)
+
     for filename in common_files:
         if filename not in available_files:
-            # Only read if changed or not in cache
-            if filename in changed_files or filename not in context.get("file_cache", {}):
+            if filename in file_cache:
+                # Serve from memory — no disk read
+                available_files[filename] = file_cache[filename]
+            else:
+                # First time seeing this file — read from disk and cache
                 content = read_file(filename)
                 if content:
                     available_files[filename] = content
-                    # Update index with file metadata
+                    file_cache[filename] = content
                     data_manager.index.update_file_metadata(filename, {
                         "size": len(content),
                         "agent_last_read": agent_name
                     })
-            else:
-                # Use cached content
-                available_files[filename] = context["file_cache"][filename]
     
     # Build user prompt with file contents
+    # Exclude file_cache from serialization — it's internal, not for Claude
+    prompt_context = {k: v for k, v in context.items() if k != "file_cache"}
     user_prompt = f"""CONTEXT FROM PREVIOUS STEPS:
-{json.dumps(context, indent=2)}
+{json.dumps(prompt_context, indent=2)}
 
 AVAILABLE FILES (you can reference these):
 {json.dumps({k: f"[{len(v)} chars]" for k, v in available_files.items()}, indent=2)}
@@ -926,15 +940,16 @@ Output JSON with your decisions and outputs.
                         content = json.dumps(content, indent=2, ensure_ascii=False)
                     write_file(filename, content)
                     files_written.append(filename)
+                    file_cache[filename] = content  # Update cache with written content
                     console_debug(f"  ✓ {filename} written")
-                    
+
                     # Update index with file metadata
                     data_manager.index.update_file_metadata(filename, {
                         "size": len(content),
                         "generated_by": agent_name,
                         "schema_version": result.get("schema_version", "unknown")
                     })
-        
+
         # Also check flat format (for backward compatibility)
         file_mappings = {
             "calendar_md": "calendar.md",
@@ -958,6 +973,7 @@ Output JSON with your decisions and outputs.
                     content = json.dumps(content, indent=2, ensure_ascii=False)
                 write_file(filename, content)
                 files_written.append(filename)
+                file_cache[filename] = content  # Update cache with written content
                 console_debug(f"  ✓ {filename} written")
 
                 # Update index with file metadata
@@ -1239,258 +1255,284 @@ def needs_backup(mode: str) -> bool:
     planning_modes = ["prepare_today", "prepare_tomorrow", "prepare_week", "full_analysis"]
     return mode in planning_modes
 
-def main():
-    """Main execution loop - agent-driven workflow with natural language"""
-    print("=" * 60)
-    print("Chief Clarity - Agent-Driven Architecture v3.0")
-    print("=" * 60)
-    
-    # Get natural language request from user
-    print("\nWhat would you like Chief Clarity to do?\n")
-    print("Examples:")
-    print("  - 'Help me plan tomorrow'")
-    print("  - 'Prepare my day'")
-    print("  - 'Plan this week'")
-    print("  - 'Answer my questions in input.txt'")
-    print("  - 'Full analysis of my situation'")
-    print("  - 'show tasks' (quick task view)")
-    print("  - 'show calendar' (quick calendar view)")
-    print("\n" + "=" * 60 + "\n")
-    
-    user_request = input("Your request: ").strip()
-    
-    if not user_request or user_request.lower() in ["exit", "quit", "0"]:
-        print("Goodbye!")
-        return
-    
-    # Handle special commands
-    if user_request.lower() in ["show tasks", "tasks", "list tasks"]:
-        show_tasks()
-        return
-    
-    if user_request.lower() in ["show calendar", "calendar", "list calendar"]:
-        show_calendar()
-        return
-    
-    print(f"\n{'=' * 60}")
-    print(f"Processing: {user_request}")
-    print("=" * 60)
-    
-    # Backup is created only AFTER cc_chiefclarity_agent determines the mode.
-    # Planning modes can modify core data; answer modes should be read-only.
+def format_chat_response(context, workflow_success, mode):
+    """Extract a human-friendly response from agent results for chat display."""
+    if not workflow_success:
+        # Find the last agent result with a message
+        for key in reversed(list(context.keys())):
+            if key.endswith("_result") and isinstance(context[key], dict):
+                msg = context[key].get("message", "")
+                clarifications = context[key].get("clarification_questions", [])
+                if clarifications:
+                    lines = [msg] if msg else ["I need a bit more information:"]
+                    for q in clarifications:
+                        lines.append(f"  - {q}")
+                    return "\n".join(lines)
+                if msg:
+                    return msg
+        return "Something went wrong. Try rephrasing your request."
+
+    # Direct answer: orchestrator answered from data, no further agents ran
+    if mode == "direct_answer":
+        orchestrator_result = context.get("cc_chiefclarity_agent_result", {})
+        answer = orchestrator_result.get("console_output", "")
+        if answer:
+            return answer
+        return orchestrator_result.get("message", "Done.")
+
+    # Quick update: intake processed a note/task, no planning or writing needed
+    if mode == "quick_update":
+        intake_result = context.get("cc_intake_agent_result", {})
+        answer = intake_result.get("console_output", "")
+        if answer:
+            return answer
+        return intake_result.get("message", "Done.")
+
+    # Answer modes: use console_output from writer
+    if mode in ["answer_input_questions", "answer_one_question"]:
+        writer_result = context.get("cc_writer_agent_result", {})
+        answer = writer_result.get("console_output", "")
+        if answer:
+            return answer
+        return writer_result.get("message", "Done.")
+
+    # Planning modes: use the last agent's message
+    for key in reversed(list(context.keys())):
+        if key.endswith("_result") and isinstance(context[key], dict):
+            msg = context[key].get("message", "")
+            if msg:
+                return msg
+
+    return "Done."
+
+
+def append_chat_history(user_request, response_text, run_id):
+    """Log both user message and system response to chat_history.md."""
+    chat_history_path = BASE_DIR / "chat_history.md"
+    timestamp = datetime.now().strftime("%Y-%m-%d %I:%M %p")
+
+    if not chat_history_path.exists():
+        with open(chat_history_path, 'w', encoding='utf-8') as f:
+            f.write("# Chat History\n\n")
+
+    with open(chat_history_path, 'a', encoding='utf-8') as f:
+        f.write("---\n\n")
+        f.write(f"## {timestamp}\n\n")
+        f.write(f"**You:** {user_request}\n\n")
+        f.write(f"**Chief Clarity:** {response_text}\n\n")
+
+
+def process_request(user_request, session_cache):
+    """Process a single user request through the agent chain.
+    session_cache persists across turns — files read once are reused until overwritten.
+    Returns (response_text, workflow_success, run_id)."""
+
     backup_path = None
-    
-    # Generate run ID
     run_id = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    
-    # Initialize data manager for this run
-    data_manager.start_run(run_id, "natural_language", user_request)
-    
-    # Initialize context with natural language request
-    # Orchestration agent will interpret and decide what to do
+    data_manager.start_run(run_id, "chat", user_request)
+
     context = {
         "user_request": user_request,
         "start_time": datetime.now().isoformat(),
         "run_id": run_id,
-        "file_cache": {}  # Cache for unchanged files
+        "file_cache": session_cache
     }
-    
+
     workflow_success = True
-    
-    # Start with ChiefClarity agent
     current_agent = "cc_chiefclarity_agent"
-    max_iterations = 10  # Safety limit
+    max_iterations = 10
     iteration = 0
-    
-    # Agent-driven execution loop
+    mode = ""
+
     while current_agent and iteration < max_iterations:
         iteration += 1
-        
-        # Retry logic for agent execution
         max_retries = 2
         result = None
-        
+
         for attempt in range(max_retries):
             try:
                 result = execute_agent(current_agent, context)
-                break  # Success, exit retry loop
-                
+                break
             except json.JSONDecodeError as e:
-                print(f"  ⚠ JSON parsing error (attempt {attempt + 1}/{max_retries}): {e}")
+                print(f"  ⚠ Parse error (attempt {attempt + 1}/{max_retries})")
                 if attempt < max_retries - 1:
-                    print(f"  → Retrying...")
                     continue
                 else:
-                    print(f"  ✗ Failed to parse agent response after {max_retries} attempts")
-                    result = {"status": "error", "message": f"JSON parsing failed: {e}", "next_agent": None}
+                    result = {"status": "error", "message": "I had trouble processing that. Try again.", "next_agent": None}
                     workflow_success = False
                     break
-                    
             except Exception as e:
-                print(f"  ⚠ Error (attempt {attempt + 1}/{max_retries}): {e}")
+                print(f"  ⚠ Error (attempt {attempt + 1}/{max_retries})")
                 if attempt < max_retries - 1:
-                    print(f"  → Retrying...")
                     continue
                 else:
-                    print(f"  ✗ Failed after {max_retries} attempts")
-                    result = {"status": "error", "message": str(e), "next_agent": None}
+                    result = {"status": "error", "message": "Something went wrong. Try again.", "next_agent": None}
                     workflow_success = False
                     break
-        
+
         if not result:
-            print(f"\n✗ No result from {current_agent}")
             workflow_success = False
             break
-        
-        # Update context with result
+
         context[f"{current_agent}_result"] = result
-        
-        # Check status
-        if result.get("status") == "blocked":
-            print(f"\n✗ Workflow blocked: {result.get('message')}")
+
+        if result.get("status") in ["blocked", "needs_clarification", "error"]:
             workflow_success = False
             break
-        
-        if result.get("status") == "needs_clarification":
-            print(f"\n⚠ Needs clarification: {result.get('message')}")
-            if result.get("clarification_questions"):
-                for q in result["clarification_questions"]:
-                    print(f"  - {q}")
-            workflow_success = False
-            break
-        
-        if result.get("status") == "error":
-            print(f"\n✗ Agent error: {result.get('message')}")
-            workflow_success = False
-            break
-        
-        # After cc_chiefclarity_agent completes, decide whether to create a backup
-        # based on the selected mode in data/run_manifest.json.
+
+        # After orchestrator: read mode and backup if needed
         if iteration == 1 and current_agent == "cc_chiefclarity_agent":
-            manifest_path = BASE_DIR / "run_manifest.json"
-            mode = ""
-            if manifest_path.exists():
+            manifest_content = session_cache.get("run_manifest.json", "")
+            if manifest_content:
                 try:
-                    with open(manifest_path, "r", encoding="utf-8") as f:
-                        manifest = json.load(f)
-                        mode = manifest.get("mode", "")
-                except Exception as e:
-                    print(f"  ⚠️  Warning: Could not read run_manifest.json to determine mode: {e}")
-            
+                    manifest = json.loads(manifest_content) if isinstance(manifest_content, str) else manifest_content
+                    mode = manifest.get("mode", "")
+                except Exception:
+                    pass
+
             if needs_backup(mode):
-                if CC_VERBOSE:
-                    print("\n  → Creating backup...")
                 backup_path = backup_data_directory()
                 if backup_path:
                     console_debug(f"  ✓ Backup created: {backup_path.name}")
-                else:
-                    console_debug("  ⚠️  Backup skipped (read-only operation)")
-                    backup_path = None
-            else:
-                console_debug("\n  → Backup skipped (answer/read-only mode)")
 
-        # Get next agent
         current_agent = result.get("next_agent")
-    
+
     if iteration >= max_iterations:
-        print(f"\n⚠ Max iterations ({max_iterations}) reached")
         workflow_success = False
-    
-    # Finalize data manager
+
     data_manager.end_run("completed" if workflow_success else "failed")
-    
-    # Check if this was an answer mode - print to console and append to chat_history.md
-    if workflow_success:
-        manifest_path = BASE_DIR / "run_manifest.json"
-        if manifest_path.exists():
-            with open(manifest_path, 'r', encoding='utf-8') as f:
-                manifest = json.load(f)
-                mode = manifest.get("mode", "")
-                
-                # For answer modes, print answers to console and save to chat history
-                if mode in ["answer_input_questions", "answer_one_question"]:
-                    writer_result = context.get("cc_writer_agent_result", {})
-                    answer_text = writer_result.get("console_output", "")
-                    
-                    if answer_text:
-                        # Print to console
-                        print("\n" + "=" * 60)
-                        print("📝 ANSWERS")
-                        print("=" * 60)
-                        print(answer_text)
-                        print("=" * 60)
-                        
-                        # Append to chat_history.md
-                        chat_history_path = BASE_DIR / "chat_history.md"
-                        timestamp = datetime.now().strftime("%Y-%m-%d %I:%M %p")
-                        
-                        # Create file with header if it doesn't exist
-                        if not chat_history_path.exists():
-                            with open(chat_history_path, 'w', encoding='utf-8') as f:
-                                f.write("# Chat History\n\n")
-                        
-                        # Append new Q&A session
-                        with open(chat_history_path, 'a', encoding='utf-8') as f:
-                            f.write("---\n\n")
-                            f.write(f"## {timestamp}\n\n")
-                            f.write(answer_text)
-                            f.write(f"\n\n**Run ID:** {run_id}\n\n")
-                        
-                        print(f"\n💾 Answer saved to: data/chat_history.md")
-    
-    # Report final status
-    print("\n" + "=" * 60)
-    if workflow_success:
-        print("✅ Workflow COMPLETED successfully!")
-        print(f"📊 Run ID: {run_id}")
-        print(f"📊 Agents executed: {len(data_manager.agents_executed)}")
-    else:
-        print("❌ Workflow FAILED!")
-        print("=" * 60)
-        if backup_path:  # Only restore if backup was created
-            print("\n⚠️  RESTORING FROM BACKUP...")
-            
-            # Close database connection before restore to prevent file lock
-            data_manager.close()
-            
-            if restore_from_backup(backup_path):
-                print("✓ Data restored to pre-workflow state")
-                print("✓ No broken or fragmented data")
-            else:
-                print("✗ Could not restore backup")
-        else:
-            print("\n⚠️  No backup available (read-only operation)")
-    print("=" * 60)
-    if workflow_success:
-        # Generate HTML version of focus.md for easy viewing
+
+    # On failure with backup, restore
+    if not workflow_success and backup_path:
+        data_manager.close()
+        if restore_from_backup(backup_path):
+            console_debug("  ✓ Data restored")
+
+    # On success, generate focus.html for planning modes
+    if workflow_success and mode not in ["answer_input_questions", "answer_one_question", "direct_answer", "quick_update"]:
         if generate_focus_html(BASE_DIR):
             console_debug("  ✓ focus.html generated")
 
-        print("\nGenerated files:")
+    response = format_chat_response(context, workflow_success, mode)
+    return response, workflow_success, run_id
 
-        # List generated files
-        for file in sorted(BASE_DIR.glob("*")):
-            if file.is_file():
-                print(f"  - data/{file.name}")
 
-        # Check mode to give appropriate message
-        manifest_path = BASE_DIR / "run_manifest.json"
-        if manifest_path.exists():
-            with open(manifest_path, 'r', encoding='utf-8') as f:
-                manifest = json.load(f)
-                mode = manifest.get("mode", "")
+def load_session_data():
+    """Load all data files into memory on startup. Returns the session cache dict."""
+    cache = {}
+    files_to_load = [
+        "user_profile.md", "content_index.json", "run_manifest.json",
+        "input.txt", "calendar.json", "tasks.json", "topic_registry.json",
+        "structured_input.md", "OKR.md", "intake_data.json",
+        "history_digest.md", "context_digest.md", "feedback_memory.json",
+        "plan_data.json", "plan_data.md", "companion_data.json",
+        "chat_history.md",
+    ]
+    loaded = 0
+    for filename in files_to_load:
+        content = read_file(filename)
+        if content:
+            cache[filename] = content
+            loaded += 1
+    return cache, loaded
 
-                if mode in ["answer_input_questions", "answer_one_question"]:
-                    print("\n✓ Answers displayed above and saved to data/chat_history.md")
-                else:
-                    print("\n✓ Open data/focus.html in your browser for today's plan!")
+
+def get_greeting(session_cache):
+    """Build a personalized greeting from cached user_profile.md and system clock."""
+    # Extract name
+    name = "there"
+    profile = session_cache.get("user_profile.md", "")
+    for line in profile.splitlines():
+        if line.strip().startswith("- preferred_name:"):
+            name = line.split(":", 1)[1].strip()
+            break
+
+    # Extract timezone
+    tz_name = "UTC"
+    for line in profile.splitlines():
+        if line.strip().startswith("timezone:"):
+            tz_name = line.split(":", 1)[1].strip()
+            break
+
+    # Compute local time
+    try:
+        user_tz = ZoneInfo(tz_name)
+        now = datetime.now(user_tz)
+    except Exception:
+        now = datetime.now()
+
+    hour = now.hour
+    if 5 <= hour < 12:
+        period = "morning"
+    elif 12 <= hour < 18:
+        period = "afternoon"
+    elif 18 <= hour < 22:
+        period = "evening"
     else:
-        print("\n⚠️  No files were generated due to workflow failure.")
-        print("⚠️  Data has been restored to pre-workflow state.")
-        print("\nTo debug:")
-        print("  1. Check data/logs/_debug_*_response.txt files for agent outputs")
-        print("  2. Review error messages above")
-        print("  3. Try again with a simpler request")
+        period = "night"
+
+    time_str = now.strftime("%-I:%M %p") if os.name != "nt" else now.strftime("%#I:%M %p")
+    day_str = now.strftime("%A")
+    city = "Montreal"  # From user_profile.md location
+
+    return f"Good {period}, {name}! It's {time_str} in {city} ({day_str})"
+
+
+def main():
+    """Persistent chat loop - agent-driven workflow with natural language"""
+    print("=" * 60)
+    print("Chief Clarity")
+    print("=" * 60)
+
+    # Load all data into memory at startup
+    session_cache, loaded = load_session_data()
+    greeting = get_greeting(session_cache)
+    print(f"\n  {greeting}")
+    print(f"  {loaded} files loaded — ready to go")
+
+    print("\nExamples: 'What do I have today?', 'Plan tomorrow', 'show tasks', 'exit'")
+    print("=" * 60)
+
+    try:
+        while True:
+            try:
+                user_request = input("\nYou: ").strip()
+            except EOFError:
+                break
+
+            if not user_request:
+                continue
+
+            if user_request.lower() in ["exit", "quit", "q", "0"]:
+                break
+
+            # Quick-view commands (stay in loop)
+            if user_request.lower() in ["show tasks", "tasks", "list tasks"]:
+                show_tasks()
+                continue
+
+            if user_request.lower() in ["show calendar", "calendar", "list calendar"]:
+                show_calendar()
+                continue
+
+            # Process through agent chain
+            try:
+                response, success, run_id = process_request(user_request, session_cache)
+                print(f"\nChief Clarity: {response}")
+                append_chat_history(user_request, response, run_id)
+            except KeyboardInterrupt:
+                print("\n\n  Request cancelled.")
+                continue
+
+    except (KeyboardInterrupt, EOFError):
+        pass
+    finally:
+        print("\nGoodbye!")
+        try:
+            data_manager.close()
+        except Exception:
+            pass
+
 
 if __name__ == "__main__":
     main()

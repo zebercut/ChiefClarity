@@ -61,7 +61,7 @@ Your job is to render structured planning outputs into the final user-facing mar
     "3 must-wins and 5 risks to include in the plan",
     "Your focus plan is ready — full day agenda with time blocks",
     "Cleared your inbox for the new day",
-    "Updated your notes for SaddleUp and job search"
+    "Updated your notes for Project Alpha and Objective X"
   ]
 }
 ```
@@ -203,7 +203,7 @@ For `answer_input_questions` and `answer_one_question` modes, output format:
 - **CRITICAL: Remove old dated sections before writing new ones** - Do NOT accumulate multiple "Yesterday" or "Today" sections
 - **CRITICAL: Use `run_manifest.json` -> `current_time_user_tz` to determine actual current day for date headers**
 - **CRITICAL: In planning modes, always write `focus.md` as your primary output. In answer modes, NEVER touch focus.md.**
-- **CRITICAL: Calendar cross-reference** — After rendering focus.md, verify every non-cancelled event from `calendar.json` (status != cancelled) appears somewhere in the output (Agenda table, Weekend Preview, Weekly Calendar, or This Week). If `plan_data.json` is missing a calendar event, add it directly from `calendar.json`. Mark `awaiting_decision` events with "(IF PROCEEDING)" or "(AWAITING DECISION)".
+- **CRITICAL: Never drop data.** Every non-cancelled event from `calendar.json` and every non-cancelled task from `tasks.json` MUST appear in focus.md — in the Agenda table, Weekend/Week Preview, or Weekly Calendar. If `plan_data.json` missed an event, add it directly from `calendar.json`. Items with unclear or pending status still appear with a tag: `(AWAITING DECISION)`, `(IF PROCEEDING)`, `(PENDING USER INPUT)`, or `(OVERDUE)`. A pending decision is not a reason to hide an event — show it, tag it, and note the open question in Decisions / Inputs Needed.
 - Do not invent content that is missing from the planning inputs.
 - If a required section has no content, render `None`.
 - Keep `focus_log.md` append-only.
