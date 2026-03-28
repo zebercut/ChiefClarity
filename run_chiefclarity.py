@@ -352,6 +352,42 @@ def call_claude(system_prompt, user_prompt, max_tokens=32000):
     
     return full_response
 
+def _repair_json_strings(text: str) -> str:
+    """Fix literal control characters inside JSON strings.
+
+    LLMs sometimes emit raw newlines/tabs inside a string value, making it
+    invalid JSON. This scanner fixes them without touching content outside strings.
+    """
+    result = []
+    in_string = False
+    escape_next = False
+    for ch in text:
+        if escape_next:
+            result.append(ch)
+            escape_next = False
+            continue
+        if ch == '\\' and in_string:
+            result.append(ch)
+            escape_next = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            result.append(ch)
+            continue
+        if in_string:
+            if ch == '\n':
+                result.append('\\n')
+            elif ch == '\r':
+                result.append('\\r')
+            elif ch == '\t':
+                result.append('\\t')
+            else:
+                result.append(ch)
+        else:
+            result.append(ch)
+    return ''.join(result)
+
+
 def extract_first_json_object(text: str) -> str:
     """Extract the first balanced JSON object from text.
 
@@ -451,24 +487,25 @@ CRITICAL FOR cc_writer_agent:
   - Do NOT write focus.md or input.txt
   - You MUST output a "console_output" string field in the top-level JSON with the final answer
 
-OUTPUT FORMAT (JSON with file contents as strings):
+OUTPUT FORMAT — always use an "outputs" object with exact filename keys:
 {{
-    "calendar_md": "updated calendar content as string",
-    "tasks_md": "updated tasks content as string", 
-    "structured_input_md": "structured input content as string",
-    "console_output": "answer text for answer modes",
-    "next_agent": "agent_name" or null,
     "status": "completed",
-    "message": "Brief status message"
+    "next_agent": "agent_name_or_null",
+    "message": "Brief status message",
+    "console_output": "answer text (answer modes only — omit otherwise)",
+    "outputs": {{
+        "some_file.json": {{"key": "value"}},
+        "some_file.md": "markdown string content"
+    }}
 }}
 
-CRITICAL - SIMPLE JSON FORMAT:
-- Use simple field names like calendar_md, tasks_md, etc.
-- File contents are plain strings (escape quotes with \\")
-- NO nested objects or arrays for file contents
-- Keep each file under 10KB
-- If content is too large, summarize or truncate
-- Output ONLY valid JSON, no markdown code blocks
+CRITICAL JSON RULES:
+- "outputs" keys are exact filenames (e.g. "calendar.json", "focus.md", "tasks.json")
+- For .json files: output the value as a proper JSON object or array — NOT a string
+- For .md/.txt files: output the value as a JSON string
+- In string values, ALWAYS escape special characters: newlines as \\n, quotes as \\", backslashes as \\\\
+- Keep each output under 10KB; summarize or truncate if needed
+- Output ONLY the JSON object — no markdown code blocks, no text before or after
 """
     
     # Collect files that should be available to this agent
@@ -566,7 +603,11 @@ Output JSON with your decisions and outputs.
     # Parse response
     try:
         json_str = extract_first_json_object(response)
-        result = json.loads(json_str)
+        try:
+            result = json.loads(json_str)
+        except json.JSONDecodeError:
+            # Retry after fixing literal control characters in string values
+            result = json.loads(_repair_json_strings(json_str))
         
         # Validate required fields
         if "status" not in result:
@@ -594,6 +635,9 @@ Output JSON with your decisions and outputs.
                     if filename in protected_filenames or filename.startswith("chat_history"):
                         console_debug(f"  ! Skipping protected file write: {filename}")
                         continue
+                    # Allow agents to output JSON files as proper dicts (no escaping trap)
+                    if isinstance(content, dict):
+                        content = json.dumps(content, indent=2, ensure_ascii=False)
                     write_file(filename, content)
                     files_written.append(filename)
                     console_debug(f"  ✓ {filename} written")
@@ -624,10 +668,12 @@ Output JSON with your decisions and outputs.
                 if filename in protected_filenames or filename.startswith("chat_history"):
                     console_debug(f"  ! Skipping protected file write: {filename}")
                     continue
+                if isinstance(content, (dict, list)):
+                    content = json.dumps(content, indent=2, ensure_ascii=False)
                 write_file(filename, content)
                 files_written.append(filename)
                 console_debug(f"  ✓ {filename} written")
-                
+
                 # Update index with file metadata
                 data_manager.index.update_file_metadata(filename, {
                     "size": len(content),

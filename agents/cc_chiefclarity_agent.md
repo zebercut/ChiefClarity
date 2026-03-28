@@ -290,6 +290,8 @@ You receive a **natural language request** from the user. Your job is to:
 - "Full analysis" / "Deep dive" / "Analyze everything" → `full_analysis`
 - "Answer my questions" / "I have questions" / "Questions in input.txt" → `answer_input_questions`
 - Specific question → `answer_one_question`
+- "What do you know about my preferences" / "What feedback have I given" / "What have you learned about me" → `feedback_query`
+- "Update my preferences" / "I have feedback" / "Something went wrong" → `feedback_update`
 
 **If ambiguous:** Ask for clarification by setting `status: "needs_clarification"`
 
@@ -297,15 +299,32 @@ You receive a **natural language request** from the user. Your job is to:
 
 ```json
 {
-  "files_read": ["user_profile.md", "input.txt"],
+  "files_read": ["user_profile.md"],
   "outputs": {
-    "run_manifest.json": "{\"mode\": \"prepare_tomorrow\", \"current_time_user_tz\": \"YYYY-MM-DDTHH:MM:SS-04:00\", \"agents_to_run\": [\"intake\", \"planning\", \"writer\"], \"user_request_interpreted\": \"User wants to plan tomorrow\"}",
+    "run_manifest.json": {
+      "schema_version": "3.0.0",
+      "generated_at": "YYYY-MM-DDTHH:MM:SS-04:00",
+      "user_timezone": "America/Toronto",
+      "current_time_user_tz": "YYYY-MM-DDTHH:MM:SS-04:00",
+      "time_of_day": "morning",
+      "mode": "prepare_tomorrow",
+      "agents_to_run": ["intake", "planning", "writer"],
+      "status": "ready",
+      "run_id": "run_YYYYMMDD_HHMMSS",
+      "user_request_interpreted": "User wants to plan tomorrow"
+    }
   },
   "next_agent": "cc_intake_agent",
   "status": "completed",
   "message": "Interpreted request as 'prepare_tomorrow'. Starting workflow with Intake Agent."
 }
 ```
+
+**CRITICAL JSON RULES:**
+- Output `run_manifest.json` as a **nested JSON object** (NOT a JSON-encoded string)
+- Do NOT embed file contents in your output — only write the run_manifest
+- Do NOT echo back input file contents in any field
+- Keep output small: status, message, files_read, outputs.run_manifest.json, next_agent
 
 ### Your Decisions
 
@@ -394,6 +413,8 @@ For each mode, decide the agent chain:
 - **full_analysis**: `cc_intake_agent` → `cc_planning_agent` → `cc_writer_agent`
 - **answer_input_questions**: `cc_planning_agent` → `cc_writer_agent` (skip intake)
 - **answer_one_question**: `cc_planning_agent` → `cc_writer_agent` (skip intake)
+- **feedback_query**: `cc_feedback_agent` (direct for questions about preferences/feedback)
+- **feedback_update**: `cc_feedback_agent` (direct to process feedback)
 
 Each agent will decide the next agent in the chain based on the workflow.
 

@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "YYYY-MM-DDTHH:MM:SSZ",
+  "feedback_items": [
+    {
+      "id": "FB-001",
+      "type": "preference_update|correction|failure_signal|success_signal|agent_behavior",
+      "category": "schedule|task|habit|agent_behavior|output_format",
+      "summary": "Brief summary of feedback",
+      "evidence": {
+        "source": "input.txt|chat_history.md",
+        "excerpt": "Exact user statement",
+        "timestamp": "YYYY-MM-DDTHH:MM:SSZ"
+      },
+      "applied_to": {
+        "file": "user_profile.md|tasks.md|calendar.md",
+        "field": "field_name",
+        "action": "updated|created|deleted"
+      },
+      "status": "active|superseded|ignored",
+      "confidence": 0.5,
+      "created_at": "YYYY-MM-DDTHH:MM:SSZ",
+      "last_seen_at": "YYYY-MM-DDTHH:MM:SSZ"
+    }
+  ]
+}

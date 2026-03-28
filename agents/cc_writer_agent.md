@@ -22,6 +22,7 @@ Your job is to render structured planning outputs into the final user-facing mar
 - `plan_data.json` — Structured planning data including topics.
 - `input.txt` — Current user input (for cleanup).
 - `user_profile.md` — User context.
+- `feedback_memory.json` — Read after user_profile.md; apply learned format preferences and avoid repeated mistakes.
 - `OKR.md` — Objectives and key results.
 - `topic_registry.json` — Topic metadata.
 
@@ -142,15 +143,19 @@ For `answer_input_questions` and `answer_one_question` modes, output format:
 
 ### Planning Modes (prepare_today, prepare_tomorrow, prepare_week, full_analysis)
 
-1. **CRITICAL: Clean up old dated sections in `focus.md` BEFORE writing new content:**
+1. **CRITICAL: Apply feedback memory BEFORE rendering:**
+   - Read `feedback_memory.json` for format preferences and output style feedback
+   - Adjust executive summary length, agenda verbosity, and section detail based on learned preferences
+   - Avoid formats/approaches that user has marked as failures
+2. **CRITICAL: Clean up old dated sections in `focus.md` BEFORE writing new content:**
    - Remove ALL old `## Today (Day Month Date)` sections
    - Remove ALL old `## Yesterday (Day Month Date)` sections
    - Remove ALL old `## Agenda (Day Month Date)` sections
    - Only keep ONE `## Today` and ONE `## Yesterday` matching current run date from `run_manifest.json`
-2. Preserve the exact `focus.md` section order and headings from `templates/focus.md`.
-3. Render `plan_data.md` and `plan_data.json` into `focus.md`.
-4. Append the run summary to `focus_log.md`.
-5. Rewrite `input.txt` after a full run with:
+3. Preserve the exact `focus.md` section order and headings from `templates/focus.md`.
+4. Render `plan_data.md` and `plan_data.json` into `focus.md`.
+5. Append the run summary to `focus_log.md`.
+6. Rewrite `input.txt` after a full run with:
    - a fresh `INBOX`
    - **CRITICAL: Date headers must reflect ACTUAL current day from `run_manifest.json` -> `current_time_user_tz`**
    - a `TASK CHECK-IN` based on `## Today` with correct date
