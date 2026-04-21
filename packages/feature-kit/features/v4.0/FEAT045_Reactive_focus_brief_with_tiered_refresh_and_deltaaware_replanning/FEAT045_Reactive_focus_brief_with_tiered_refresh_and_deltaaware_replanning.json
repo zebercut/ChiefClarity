@@ -1,0 +1,26 @@
+{
+  "id": "FEAT045",
+  "title": "Reactive focus brief with tiered refresh and delta-aware replanning",
+  "category": "Focus Planning",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Code Reviewed",
+  "release": "v4.0",
+  "createdAt": "2026-04-12T12:49:18.772Z",
+  "updatedAt": "2026-04-13T00:00:00.000Z",
+  "tags": [
+    "brief",
+    "reactive",
+    "planning",
+    "patch",
+    "refresh",
+    "delta"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

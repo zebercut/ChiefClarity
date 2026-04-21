@@ -1,0 +1,24 @@
+{
+  "id": "FEAT038",
+  "title": "Multi-intent router with primary and secondary intents",
+  "category": "LLM Pipeline",
+  "moscow": "MUST",
+  "priority": 2,
+  "status": "Rejected",
+  "release": "v2.2",
+  "createdAt": "2026-04-07T12:41:58.469Z",
+  "updatedAt": "2026-04-10T01:01:23.514Z",
+  "tags": [
+    "router",
+    "intent",
+    "assembler",
+    "accuracy"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

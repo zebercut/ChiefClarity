@@ -1,0 +1,14 @@
+{
+  "id": "FEAT015",
+  "title": "Multi-user",
+  "category": "Chat",
+  "moscow": "WONT",
+  "priority": null,
+  "status": "Rejected",
+  "release": null,
+  "createdAt": "2026-04-02T14:48:40.287Z",
+  "updatedAt": "2026-04-02T14:48:40.287Z",
+  "tags": [],
+  "okrLink": null,
+  "type": "feature"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "FEAT007",
+  "title": "Conversational chat interface",
+  "category": "Chat",
+  "moscow": "MUST",
+  "priority": null,
+  "status": "Done",
+  "release": "MVP",
+  "createdAt": "2026-04-02T14:48:40.287Z",
+  "updatedAt": "2026-04-03T00:08:36.135Z",
+  "tags": [],
+  "okrLink": null,
+  "type": "feature"
+}

@@ -1,0 +1,25 @@
+{
+  "id": "FEAT044",
+  "title": "Capacitor native DB and embeddings support",
+  "category": "Platform",
+  "moscow": "MUST",
+  "priority": 2,
+  "status": "Planned",
+  "release": "v4.1",
+  "createdAt": "2026-04-10T13:58:40.069Z",
+  "updatedAt": "2026-04-10T13:58:40.069Z",
+  "tags": [
+    "capacitor",
+    "mobile",
+    "database",
+    "embeddings",
+    "sqlite"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

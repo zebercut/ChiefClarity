@@ -1,0 +1,28 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8081:8081"
+      - "3099:3099"
+    volumes:
+      - ./src:/app/src
+      - ./app:/app/app
+      - ./scripts:/app/scripts
+      - ${DATA_FOLDER_PATH}:/data
+    env_file:
+      - .env
+    environment:
+      - DATA_FOLDER_PATH=/data
+
+  headless:
+    build: .
+    command: ["node", "scripts/headless-runner.js"]
+    volumes:
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+      - ${DATA_FOLDER_PATH}:/data
+    env_file:
+      - .env
+    environment:
+      - DATA_FOLDER_PATH=/data
+    restart: unless-stopped

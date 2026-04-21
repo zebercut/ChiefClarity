@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \":*)",
+      "WebSearch",
+      "Bash(gh api:*)",
+      "Bash(pkill -f \"featmap.*serve\")",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //PID 26532 //F)",
+      "Bash(node -e ':*)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
+    ]
+  }
+}

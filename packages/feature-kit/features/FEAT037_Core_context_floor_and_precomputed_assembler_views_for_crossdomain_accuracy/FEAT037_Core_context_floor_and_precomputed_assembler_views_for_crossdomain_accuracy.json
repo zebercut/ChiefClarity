@@ -1,0 +1,25 @@
+{
+  "id": "FEAT037",
+  "title": "Core context floor and pre-computed assembler views for cross-domain accuracy",
+  "category": "LLM Pipeline",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Rejected",
+  "release": "v2.2",
+  "createdAt": "2026-04-07T12:41:52.690Z",
+  "updatedAt": "2026-04-10T01:01:20.560Z",
+  "tags": [
+    "assembler",
+    "accuracy",
+    "context",
+    "calendar",
+    "tasks"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

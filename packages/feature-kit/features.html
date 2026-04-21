@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>featmap</title>
+<style>
+  [data-theme="dark"] {
+    --bg: #0d1117; --bg2: #161b22; --bg3: #21262d;
+    --border: #30363d; --text: #e6edf3; --text2: #8b949e; --text3: #6e7681;
+    --accent: #58a6ff; --green: #3fb950; --yellow: #d29922; --red: #f85149; --blue: #58a6ff; --gray: #6e7681;
+  }
+  [data-theme="light"] {
+    --bg: #ffffff; --bg2: #f6f8fa; --bg3: #e1e4e8;
+    --border: #d0d7de; --text: #1f2328; --text2: #656d76; --text3: #8b949e;
+    --accent: #0969da; --green: #1a7f37; --yellow: #9a6700; --red: #cf222e; --blue: #0969da; --gray: #6e7681;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); padding: 24px; transition: background 0.2s, color 0.2s; }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+  h1 .live { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #3fb95022; color: var(--green); font-weight: 500; }
+
+  .toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+  .search { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; font-size: 14px; width: 260px; }
+  .search:focus { outline: none; border-color: var(--accent); }
+  select { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+  select:focus { outline: none; border-color: var(--accent); }
+
+  .stats { display: flex; gap: 16px; margin-bottom: 16px; font-size: 13px; color: var(--text2); }
+  .stats span { background: var(--bg2); padding: 4px 10px; border-radius: 4px; }
+
+  .group-header td { font-size: 14px; font-weight: 600; color: var(--text2); padding: 12px; background: var(--bg2); border-bottom: 1px solid var(--border); }
+  .group-header .count { font-weight: 400; color: var(--text3); font-size: 12px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead { position: sticky; top: 0; z-index: 50; }
+  th { text-align: left; padding: 8px 12px; color: var(--text2); font-weight: 600; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; white-space: nowrap; background: var(--bg); }
+  th:hover { color: var(--accent); }
+  th.sorted { color: var(--accent); }
+  th.sorted::after { content: ' \25B2'; font-size: 10px; }
+  th.sorted.desc::after { content: ' \25BC'; }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--bg3); vertical-align: top; }
+  tr:hover td { background: var(--bg2); }
+
+  /* Pagination */
+  .pagination { display: flex; align-items: center; gap: 12px; padding: 12px 0; font-size: 13px; color: var(--text2); }
+  div.pagination select { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+  .page-btn { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .page-btn:disabled { opacity: 0.4; cursor: default; }
+  .page-nums { display: flex; gap: 4px; }
+  .page-num { background: var(--bg2); border: 1px solid var(--border); color: var(--text2); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; min-width: 28px; text-align: center; }
+  .page-num:hover { border-color: var(--accent); color: var(--accent); }
+  .page-num.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  [data-theme="dark"] .badge-planned { background: #58a6ff22; color: var(--blue); }
+  [data-theme="dark"] .badge-inprogress { background: #d2992222; color: var(--yellow); }
+  [data-theme="dark"] .badge-done { background: #3fb95022; color: var(--green); }
+  [data-theme="dark"] .badge-rejected { background: #f8514922; color: var(--red); }
+  [data-theme="light"] .badge-planned { background: #0969da18; color: var(--blue); }
+  [data-theme="light"] .badge-inprogress { background: #9a670018; color: var(--yellow); }
+  [data-theme="light"] .badge-done { background: #1a7f3718; color: var(--green); }
+  [data-theme="light"] .badge-rejected { background: #cf222e18; color: var(--red); }
+
+  .moscow-must { color: var(--red); font-weight: 700; }
+  .moscow-should { color: var(--yellow); font-weight: 600; }
+  .moscow-could { color: var(--blue); }
+  .moscow-wont { color: var(--gray); }
+
+  .tag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; background: var(--bg3); color: var(--text2); margin: 1px 2px; }
+  [data-theme="dark"] .release-badge { background: #8b5cf622; color: #a78bfa; }
+  [data-theme="light"] .release-badge { background: #7c3aed18; color: #6d28d9; }
+  .release-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+
+  .id-col { font-family: monospace; color: var(--text3); white-space: nowrap; }
+  .title-col { font-weight: 500; }
+  .title-link { color: var(--accent); cursor: pointer; text-decoration: none; }
+  .title-link:hover { text-decoration: underline; }
+  .title-edit { opacity: 0; margin-left: 6px; cursor: pointer; color: var(--text3); font-size: 11px; transition: opacity 0.15s; }
+  tr:hover .title-edit { opacity: 1; }
+  .title-edit:hover { color: var(--accent); }
+  .empty { text-align: center; padding: 40px; color: var(--text3); }
+
+  /* Theme toggle */
+  .theme-toggle { background: var(--bg2); border: 1px solid var(--border); color: var(--text2); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; margin-left: auto; }
+  .theme-toggle:hover { border-color: var(--accent); color: var(--text); }
+
+  /* Doc panel */
+  .doc-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 500; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+  .doc-overlay.open { opacity: 1; pointer-events: auto; }
+  .doc-panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(720px, 85vw); background: var(--bg); border-left: 1px solid var(--border); z-index: 600; transform: translateX(100%); transition: transform 0.25s ease; overflow-y: auto; padding: 32px; }
+  .doc-panel.open { transform: translateX(0); }
+  .doc-close { position: sticky; top: 0; float: right; background: var(--bg2); border: 1px solid var(--border); color: var(--text2); width: 32px; height: 32px; border-radius: 6px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; z-index: 1; }
+  .doc-close:hover { border-color: var(--accent); color: var(--text); }
+  .doc-loading { color: var(--text3); padding: 40px; text-align: center; }
+
+  /* Rendered markdown */
+  .md h1 { font-size: 22px; font-weight: 700; margin: 24px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .md h2 { font-size: 18px; font-weight: 600; margin: 20px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .md h3 { font-size: 15px; font-weight: 600; margin: 16px 0 6px; }
+  .md p { margin: 8px 0; line-height: 1.6; }
+  .md ul, .md ol { margin: 8px 0 8px 24px; line-height: 1.6; }
+  .md li { margin: 4px 0; }
+  .md code { background: var(--bg3); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; font-family: 'SFMono-Regular', Consolas, monospace; }
+  .md pre { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 16px; overflow-x: auto; margin: 12px 0; }
+  .md pre code { background: none; padding: 0; }
+  .md blockquote { border-left: 3px solid var(--accent); padding-left: 16px; color: var(--text2); margin: 12px 0; }
+  .md hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  .md table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  .md th, .md td { padding: 8px 12px; border: 1px solid var(--border); text-align: left; }
+  .md th { background: var(--bg2); font-weight: 600; }
+  .md strong { font-weight: 600; }
+  .md em { font-style: italic; color: var(--text2); }
+  .md a { color: var(--accent); text-decoration: none; }
+  .md a:hover { text-decoration: underline; }
+  .md input[type="checkbox"] { margin-right: 6px; }
+
+  /* Editable cells (live mode only) */
+  .editable { cursor: pointer; position: relative; overflow: visible; }
+  .editable:hover { outline: 1px dashed var(--border); outline-offset: 2px; border-radius: 3px; }
+  .edit-input { background: var(--bg2); border: 1px solid var(--accent); color: var(--text); padding: 4px 8px; border-radius: 4px; font-size: 12px; font-family: inherit; width: 100%; }
+
+  /* Combobox dropdown */
+  .combo { position: relative; display: inline-block; min-width: 80px; }
+  .combo-current { background: var(--bg2); border: 1px solid var(--accent); color: var(--text); padding: 4px 8px; border-radius: 4px 4px 0 0; font-size: 12px; cursor: default; }
+  .combo-menu { position: absolute; top: 100%; left: 0; right: 0; min-width: 160px; max-height: 200px; overflow-y: auto; background: var(--bg2); border: 1px solid var(--accent); border-top: none; border-radius: 0 0 6px 6px; z-index: 100; }
+  .combo-item { padding: 6px 10px; font-size: 12px; cursor: pointer; color: var(--text); white-space: nowrap; }
+  .combo-item:hover { background: var(--bg3); }
+  .combo-item.selected { color: var(--accent); font-weight: 600; }
+  .combo-new { color: var(--accent); font-style: italic; border-top: 1px solid var(--border); }
+  .combo-new-input { width: 100%; background: var(--bg); border: none; border-top: 1px solid var(--border); color: var(--text); padding: 6px 10px; font-size: 12px; font-family: inherit; outline: none; }
+
+  /* View toggle */
+  .view-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-left: 8px; }
+  .view-btn { background: var(--bg2); border: none; color: var(--text2); padding: 6px 14px; font-size: 13px; cursor: pointer; border-right: 1px solid var(--border); }
+  .view-btn:last-child { border-right: none; }
+  .view-btn:hover { color: var(--text); }
+  .view-btn.active { background: var(--accent); color: #fff; }
+
+  /* Milestone cards */
+  .ms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .ms-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .ms-card:hover { border-color: var(--accent); }
+  .ms-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+  .ms-name { font-size: 16px; font-weight: 700; flex: 1; }
+  .ms-count { font-size: 13px; color: var(--text2); }
+
+  /* Progress ring */
+  .ms-ring { position: relative; width: 64px; height: 64px; flex-shrink: 0; }
+  .ms-ring svg { transform: rotate(-90deg); }
+  .ms-ring circle { fill: none; stroke-width: 5; }
+  .ms-ring .ring-bg { stroke: var(--bg3); }
+  .ms-ring .ring-fg { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset 0.5s ease; }
+  .ms-ring .ring-pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; transform: none; }
+
+  /* Status bar */
+  .ms-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; margin-bottom: 12px; background: var(--bg3); }
+  .ms-bar-seg { height: 100%; transition: width 0.3s ease; }
+  .ms-bar-done { background: var(--green); }
+  .ms-bar-wip { background: var(--yellow); }
+  .ms-bar-planned { background: var(--accent); }
+  .ms-bar-rejected { background: var(--gray); }
+
+  /* Status counts */
+  .ms-stats { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--text2); margin-bottom: 12px; }
+  .ms-stat { display: flex; align-items: center; gap: 4px; }
+  .ms-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  /* MoSCoW breakdown */
+  .ms-moscow { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ms-moscow-item { font-size: 11px; padding: 2px 8px; border-radius: 8px; font-weight: 600; }
+
+  /* Milestone sections */
+  .ms-section { margin-bottom: 24px; }
+  .ms-section-header { display: flex; align-items: center; gap: 10px; padding: 10px 0; cursor: pointer; user-select: none; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  .ms-section-header:hover { color: var(--accent); }
+  .ms-section-title { font-size: 15px; font-weight: 600; }
+  .ms-section-meta { font-size: 12px; color: var(--text3); }
+  .ms-arrow { font-size: 12px; color: var(--text3); transition: transform 0.2s; }
+  .ms-arrow.open { transform: rotate(90deg); }
+  .ms-section-body { overflow: hidden; }
+  .ms-section-body.collapsed { display: none; }
+  .ms-unassigned { opacity: 0.6; }
+
+  /* Toast */
+  #toasts { position: fixed; bottom: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column-reverse; gap: 8px; pointer-events: none; }
+  .toast { padding: 10px 16px; border-radius: 8px; font-size: 13px; transition: opacity 0.3s; pointer-events: auto; }
+  .toast-ok { background: #3fb95033; color: var(--green); border: 1px solid #3fb95044; }
+  .toast-err { background: #f8514933; color: var(--red); border: 1px solid #f8514944; }
+</style>
+</head>
+<body>
+<h1>featmap
+  <div class="view-toggle">
+    <button class="view-btn active" data-view="list">List</button>
+    <button class="view-btn" data-view="milestones">Milestones</button>
+  </div>
+  <button class="theme-toggle" id="themeToggle" title="Toggle theme">☀️</button>
+</h1>
+
+<div class="toolbar">
+  <input class="search" id="search" type="text" placeholder="Search features...">
+  <select id="filterStatus"><option value="">All statuses</option></select>
+  <select id="filterMoscow"><option value="">All MoSCoW</option></select>
+  <select id="filterCategory"><option value="">All categories</option></select>
+  <select id="filterRelease"><option value="">All releases</option></select>
+  <select id="filterTag"><option value="">All tags</option></select>
+  <select id="groupBy">
+    <option value="">No grouping</option>
+    <option value="status">Group by Status</option>
+    <option value="category">Group by Category</option>
+    <option value="moscow">Group by MoSCoW</option>
+    <option value="release">Group by Release</option>
+    <option value="tags">Group by Tag</option>
+  </select>
+</div>
+
+<div class="stats" id="stats"></div>
+<div id="content"></div>
+<div id="toasts"></div>
+<div class="doc-overlay" id="docOverlay"></div>
+<div class="doc-panel" id="docPanel">
+  <button class="doc-close" id="docClose">&times;</button>
+  <div class="md" id="docContent"></div>
+</div>
+
+<script>
+let DATA = [{"id":"FEAT001","title":"Task management dashboard","category":"Tasks","moscow":"MUST","priority":1,"status":"Planned","release":"POST-MVP","createdAt":"2026-04-02T14:48:40.287Z","updatedAt":"2026-04-03T21:00:50.093Z","tags":[],"okrLink":null},{"id":"FEAT002","title":"Calendar experience","category":"Calendar","moscow":"MUST","priority":1,"status":"Planned","release":"MVP","createdAt":"2026-04-02T14:48:40.287Z","updatedAt":"2026-04-03T00:09:37.328Z","tags":[],"okrLink":null},{"id":"FEAT021","title":"Data encryption at rest for sensitive JSON files","category":"Data","moscow":"MUST","priority":1,"status":"Planned","release":"MVP","createdAt":"2026-04-04T12:39:02.042Z","updatedAt":"2026-04-04T12:39:02.042Z","tags":[],"okrLink":null},{"id":"FEAT003","title":"Resilient multi-modal input","category":"Chat","moscow":"MUST","priority":2,"status":"Planned","release":"POST-MVP","createdAt":"2026-04-02T14:48:40.287Z","updatedAt":"2026-04-03T00:09:42.240Z","tags":[],"okrLink":null},{"id":"FEAT017","title":"One-liner open source setup (npx create-chief-clarity)","category":"Platform","moscow":"SHOULD","priority":2,"status":"Planned","release":"POST-MVP","createdAt":"2026-04-03T20:09:08.517Z","updatedAt":"2026-04-03T20:14:09.903Z","tags":[],"okrLink":null},{"id":"FEAT018","title":"Google Calendar integration (read-only sync)","category":"Integrations","moscow":"SHOULD","priority":2,"status":"Planned","release":"POST-MVP","createdAt":"2026-04-03T20:55:28.752Z","updatedAt":"2026-04-04T12:14:36.033Z","tags":[],"okrLink":null},{"id":"FEAT019","title":"Message queue & chat pipeline","category":"Chat","moscow":"MUST","priority":2,"status":"Planned","release":"MVP","createdAt":"2026-04-04T12:00:00.000Z","updatedAt":"2026-04-04T12:00:00.000Z","tags":["ux","chat","queue"],"okrLink":null},{"id":"FEAT020","title":"Capability Registry Plugin System","category":"Architecture","moscow":"SHOULD","priority":2,"status":"Planned","release":"POST-MVP","createdAt":"2026-04-04T12:31:32.295Z","updatedAt":"2026-04-04T12:35:44.025Z","tags":[],"okrLink":null},{"id":"FEAT023","title":"Topic Repository core system","category":"Data","moscow":"MUST","priority":2,"status":"In Progress","release":"v2.1","createdAt":"2026-04-05T10:54:54.231Z","updatedAt":"2026-04-05T10:55:00.948Z","tags":["topics","knowledge","notes"],"okrLink":null},{"id":"FEAT004","title":"Smart recurring suggestions","category":"Proactive","moscow":"SHOULD","priority":3,"status":"Planned","release":"POST-MVP","createdAt":"2026-04-02T14:48:40.287Z","updatedAt":"2026-04-03T20:30:44.272Z","tags":[],"okrLink":null},{"id":"FEAT006","title":"Data portability & integrations ","category":"Integrations","moscow":"SHOULD","priority":3,"status":"Planned","release":"POST-MVP","createdAt":"2026-04-02T14:48:40.287Z","updatedAt":"2026-04-03T20:56:48.872Z","tags":[],"okrLink":null},{"id":"FEAT022","title":"Per-intent model routing for cost optimization","category":"Infrastructure","moscow":"SHOULD","priority":3,"status":"Done","release":"v1.0","createdAt":"2026-04-05T10:31:32.781Z","updatedAt":"2026-04-05T11:27:27.421Z","tags":["llm","cost","performance"],"okrLink":null},{"id":"FEAT024","title":"Topic auto-promotion with periodic background detection","category":"Data","moscow":"SHOULD","priority":4,"status":"Planned","release":"v2.2","createdAt":"2026-04-05T10:55:07.482Z","updatedAt":"2026-04-05T10:55:07.482Z","tags":["topics","knowledge","automation"],"okrLink":null},{"id":"FEAT005","title":"Mobile-native experience","category":"Platform","moscow":"COULD","priority":5,"status":"Planned","release":"POST-MVP","createdAt":"2026-04-02T14:48:40.287Z","updatedAt":"2026-04-03T00:10:09.481Z","tags":[],"okrLink":null},{"id":"FEAT025","title":"Multi-LLM provider support with setup and settings UI","category":"Infrastructure","moscow":"COULD","priority":5,"status":"Planned","release":"v2.0","createdAt":"2026-04-05T11:02:16.885Z","updatedAt":"2026-04-05T11:02:16.885Z","tags":["llm","multi-provider","settings","openai"],"okrLink":null},{"id":"FEAT007","title":"Conversational chat interface","category":"Chat","moscow":"MUST","priority":null,"status":"Done","release":"MVP","createdAt":"2026-04-02T14:48:40.287Z","updatedAt":"2026-04-03T00:08:36.135Z","tags":[],"okrLink":null},{"id":"FEAT008","title":"Focus Dashboard & daily planning","category":"Focus","moscow":"MUST","priority":null,"status":"Done","release":"MVP","createdAt":"2026-04-02T14:48:40.287Z","updatedAt":"2026-04-03T00:08:46.600Z","tags":[],"okrLink":null},{"id":"FEAT009","title":"Proactive intelligence engine","category":"Proactive","moscow":"MUST","priority":null,"status":"Done","release":"MVP","createdAt":"2026-04-02T14:48:40.287Z","updatedAt":"2026-04-03T00:08:50.288Z","tags":[],"okrLink":null},{"id":"FEAT010","title":"Autonomous background scheduler","category":"Runner","moscow":"MUST","priority":null,"status":"Done","release":"MVP","createdAt":"2026-04-02T14:48:40.287Z","updatedAt":"2026-04-03T00:08:52.671Z","tags":[],"okrLink":null},{"id":"FEAT011","title":"Continuous data sync & hygiene","category":"Data","moscow":"MUST","priority":null,"status":"Done","release":"MVP","createdAt":"2026-04-02T14:48:40.287Z","updatedAt":"2026-04-03T00:08:55.623Z","tags":[],"okrLink":null},{"id":"FEAT012","title":"Reliable data layer","category":"Data","moscow":"MUST","priority":null,"status":"Done","release":"MVP","createdAt":"2026-04-02T14:48:40.287Z","updatedAt":"2026-04-03T00:08:58.808Z","tags":[],"okrLink":null},{"id":"FEAT013","title":"Cross-platform deployment","category":"Platform","moscow":"MUST","priority":null,"status":"Done","release":"MVP","createdAt":"2026-04-02T14:48:40.287Z","updatedAt":"2026-04-03T00:09:01.111Z","tags":[],"okrLink":null},{"id":"FEAT014","title":"Theme system","category":"UI","moscow":"SHOULD","priority":null,"status":"Done","release":"MVP","createdAt":"2026-04-02T14:48:40.287Z","updatedAt":"2026-04-03T00:09:03.959Z","tags":[],"okrLink":null},{"id":"FEAT015","title":"Multi-user","category":"Chat","moscow":"WONT","priority":null,"status":"Rejected","release":null,"createdAt":"2026-04-02T14:48:40.287Z","updatedAt":"2026-04-02T14:48:40.287Z","tags":[],"okrLink":null},{"id":"FEAT016","title":"OKR goal tracking with dual-measurement","category":"OKR","moscow":"MUST","priority":null,"status":"Done","release":"MVP","createdAt":"2026-04-03T12:00:00.000Z","updatedAt":"2026-04-03T12:00:00.000Z","tags":[],"okrLink":null}];
+const LIVE = false;
+const statusClass = s => 'badge-' + s.toLowerCase().replace(/\s+/g, '');
+const moscowClass = m => 'moscow-' + m.toLowerCase();
+let sortField = 'id', sortDir = 'asc';
+let currentPage = 0, pageSize = 25;
+try { const s = localStorage.getItem('featmap-pageSize'); if (s) pageSize = parseInt(s, 10); } catch {}
+
+// --- Theme toggle ---
+const themeBtn = document.getElementById('themeToggle');
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  themeBtn.textContent = t === 'dark' ? '☀️' : '🌙';
+  try { localStorage.setItem('featmap-theme', t); } catch {}
+}
+themeBtn.addEventListener('click', () => {
+  setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+});
+try { const saved = localStorage.getItem('featmap-theme'); if (saved) setTheme(saved); } catch {}
+
+// --- View toggle ---
+let currentView = 'list';
+try { const sv = localStorage.getItem('featmap-view'); if (sv) currentView = sv; } catch {}
+const viewBtns = document.querySelectorAll('.view-btn');
+function setView(v) {
+  currentView = v;
+  try { localStorage.setItem('featmap-view', v); } catch {}
+  viewBtns.forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  // Show/hide groupBy — only relevant for list view
+  document.getElementById('groupBy').style.display = v === 'list' ? '' : 'none';
+  render();
+}
+viewBtns.forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+// Apply saved view on load
+viewBtns.forEach(b => b.classList.toggle('active', b.dataset.view === currentView));
+if (currentView !== 'list') document.getElementById('groupBy').style.display = 'none';
+
+// --- Doc panel ---
+const docOverlay = document.getElementById('docOverlay');
+const docPanel = document.getElementById('docPanel');
+const docContent = document.getElementById('docContent');
+const docClose = document.getElementById('docClose');
+
+function openDoc(featureId) {
+  if (!LIVE) return;
+  docContent.innerHTML = '<div class="doc-loading">Loading...</div>';
+  docOverlay.classList.add('open');
+  docPanel.classList.add('open');
+  fetch('/api/features/' + featureId + '/doc')
+    .then(r => { if (!r.ok) throw new Error('Not found'); return r.text(); })
+    .then(html => { docContent.innerHTML = html; })
+    .catch(() => { docContent.innerHTML = '<div class="doc-loading">No documentation found for ' + esc(featureId) + '</div>'; });
+}
+
+function closeDoc() {
+  docOverlay.classList.remove('open');
+  docPanel.classList.remove('open');
+}
+
+docClose.addEventListener('click', closeDoc);
+docOverlay.addEventListener('click', closeDoc);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && docPanel.classList.contains('open')) { e.stopImmediatePropagation(); closeDoc(); }
+});
+
+const STATUSES = ['Planned', 'In Progress', 'Done', 'Rejected'];
+const MOSCOWS = ['MUST', 'SHOULD', 'COULD', 'WONT'];
+
+// --- SSE: auto-refresh on file changes (live mode only) ---
+if (LIVE) {
+  const evtSource = new EventSource('/api/events');
+  evtSource.onmessage = async (e) => {
+    if (e.data === 'refresh') {
+      try {
+        const res = await fetch('/api/features');
+        DATA = await res.json();
+        populateFilters();
+        render();
+      } catch { /* ignore fetch errors during refresh */ }
+    }
+  };
+}
+
+// --- Toast ---
+function toast(msg, ok) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + (ok ? 'toast-ok' : 'toast-err');
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 2000);
+}
+
+// --- API update (live mode only) ---
+async function apiUpdate(id, updates) {
+  if (!LIVE) return;
+  try {
+    const res = await fetch('/api/features/' + id, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error); }
+    toast(id + ' updated', true);
+  } catch (e) {
+    toast('Error: ' + e.message, false);
+  }
+}
+
+// --- Collect unique values from data for combo dropdowns ---
+function getExistingValues(field) {
+  if (field === 'tags') return [...new Set(DATA.flatMap(f => f.tags))].sort();
+  if (field === 'release') return [...new Set(DATA.map(f => f.release).filter(Boolean))].sort();
+  if (field === 'category') return [...new Set(DATA.map(f => f.category))].sort();
+  return [];
+}
+
+// --- Outside-click cleanup (#4: prevents listener leaks) ---
+let activeCleanup = null;
+function registerOutsideClick(wrap, onClose) {
+  if (activeCleanup) { activeCleanup(); activeCleanup = null; }
+  let armed = false;
+  function handler(ev) {
+    if (!armed) return;
+    // If DOM was destroyed (e.g. SSE refresh), just clean up
+    if (!document.contains(wrap)) { cleanup(); return; }
+    if (!wrap.contains(ev.target)) { cleanup(); onClose(); }
+  }
+  function cleanup() {
+    document.removeEventListener('click', handler, true);
+    activeCleanup = null;
+  }
+  activeCleanup = cleanup;
+  document.addEventListener('click', handler, true);
+  requestAnimationFrame(() => { armed = true; });
+}
+
+// --- Combobox: dropdown with existing values + "New..." option ---
+function openCombo(td, featureId, field, currentValue, fixedOptions) {
+  const savedHtml = td.innerHTML;
+  td.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'combo';
+
+  // Show current value as the visible header
+  const header = document.createElement('div');
+  header.className = 'combo-current';
+  header.textContent = currentValue || '\u2014';
+  wrap.appendChild(header);
+
+  const options = fixedOptions || getExistingValues(field);
+  const allowNew = !fixedOptions;
+
+  const menu = document.createElement('div');
+  menu.className = 'combo-menu';
+
+  function buildItems(showInput) {
+    menu.innerHTML = '';
+    options.forEach(val => {
+      const item = document.createElement('div');
+      item.className = 'combo-item' + (val === currentValue ? ' selected' : '');
+      item.textContent = val;
+      item.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        apiUpdate(featureId, { [field]: val });
+      });
+      menu.appendChild(item);
+    });
+    if (allowNew && !showInput) {
+      const newItem = document.createElement('div');
+      newItem.className = 'combo-item combo-new';
+      newItem.textContent = '+ New value...';
+      newItem.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        buildItems(true);
+      });
+      menu.appendChild(newItem);
+    }
+    if (showInput) {
+      const inp = document.createElement('input');
+      inp.className = 'combo-new-input';
+      inp.placeholder = 'Type new value...';
+      menu.appendChild(inp);
+      inp.focus();
+      inp.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' && inp.value.trim()) {
+          ev.preventDefault();
+          apiUpdate(featureId, { [field]: inp.value.trim() });
+        }
+        if (ev.key === 'Escape') { ev.preventDefault(); td.innerHTML = savedHtml; }
+      });
+      inp.addEventListener('blur', () => { setTimeout(() => { if (document.contains(td) && !td.querySelector('.combo')) td.innerHTML = savedHtml; }, 150); });
+    }
+  }
+
+  buildItems(false);
+  wrap.appendChild(menu);
+  td.appendChild(wrap);
+  registerOutsideClick(wrap, () => { td.innerHTML = savedHtml; });
+}
+
+// --- Tags combobox: multi-select, batched commit on close (#5) ---
+function openTagsCombo(td, featureId, currentTags) {
+  const savedHtml = td.innerHTML;
+  td.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'combo';
+
+  // Show current tags as the visible header
+  const header = document.createElement('div');
+  header.className = 'combo-current';
+  header.textContent = (currentTags && currentTags.length > 0) ? currentTags.join(', ') : '\u2014';
+  wrap.appendChild(header);
+
+  const allTags = getExistingValues('tags');
+  const selected = new Set(currentTags || []);
+  let dirty = false;
+
+  const menu = document.createElement('div');
+  menu.className = 'combo-menu';
+
+  function buildItems() {
+    menu.innerHTML = '';
+    const tags = [...new Set([...allTags, ...selected])].sort();
+    tags.forEach(tag => {
+      const item = document.createElement('div');
+      item.className = 'combo-item' + (selected.has(tag) ? ' selected' : '');
+      item.textContent = (selected.has(tag) ? '\u2713 ' : '  ') + tag;
+      item.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        if (selected.has(tag)) selected.delete(tag); else selected.add(tag);
+        dirty = true;
+        buildItems();
+      });
+      menu.appendChild(item);
+    });
+    const inp = document.createElement('input');
+    inp.className = 'combo-new-input';
+    inp.placeholder = '+ Add tag...';
+    menu.appendChild(inp);
+    inp.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' && inp.value.trim()) {
+        ev.preventDefault();
+        selected.add(inp.value.trim());
+        dirty = true;
+        inp.value = '';
+        buildItems();
+      }
+      if (ev.key === 'Escape') { ev.preventDefault(); if (activeCleanup) { activeCleanup(); activeCleanup = null; } commitAndClose(); }
+    });
+  }
+
+  function commitAndClose() {
+    if (dirty) apiUpdate(featureId, { tags: [...selected] });
+    td.innerHTML = savedHtml;
+  }
+
+  buildItems();
+  wrap.appendChild(menu);
+  td.appendChild(wrap);
+  registerOutsideClick(wrap, commitAndClose);
+}
+
+// --- Inline editing ---
+function makeEditable(td, featureId, field, currentValue, type) {
+  if (!LIVE) return;
+  td.classList.add('editable');
+  td.addEventListener('click', function handler(e) {
+    if (td.querySelector('.combo,.edit-input')) return;
+    e.stopPropagation();
+
+    if (type === 'select-status') {
+      openCombo(td, featureId, field, currentValue, STATUSES);
+    } else if (type === 'select-moscow') {
+      openCombo(td, featureId, field, currentValue, MOSCOWS);
+    } else if (type === 'combo') {
+      openCombo(td, featureId, field, currentValue, null);
+    } else if (type === 'tags') {
+      openTagsCombo(td, featureId, currentValue);
+    } else {
+      const input = document.createElement('input');
+      input.className = 'edit-input';
+      input.value = currentValue ?? '';
+      td.innerHTML = '';
+      td.appendChild(input);
+      input.focus();
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') { apiUpdate(featureId, { [field]: input.value || null }); }
+        if (ev.key === 'Escape') render();
+      });
+      input.addEventListener('blur', () => { render(); });
+    }
+  });
+}
+
+function populateFilters() {
+  const ids = ['filterStatus','filterMoscow','filterCategory','filterRelease','filterTag'];
+  const saved = {};
+  ids.forEach(id => { saved[id] = document.getElementById(id).value; });
+  ids.forEach(id => {
+    const sel = document.getElementById(id);
+    while (sel.options.length > 1) sel.remove(1);
+  });
+  const statuses = [...new Set(DATA.map(f => f.status))].sort();
+  const moscows = [...new Set(DATA.map(f => f.moscow))];
+  const categories = [...new Set(DATA.map(f => f.category))].sort();
+  const releases = [...new Set(DATA.map(f => f.release).filter(Boolean))].sort();
+  const tags = [...new Set(DATA.flatMap(f => f.tags))].sort();
+
+  statuses.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; document.getElementById('filterStatus').appendChild(o); });
+  moscows.forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; document.getElementById('filterMoscow').appendChild(o); });
+  categories.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; document.getElementById('filterCategory').appendChild(o); });
+  releases.forEach(r => { const o = document.createElement('option'); o.value = r; o.textContent = r; document.getElementById('filterRelease').appendChild(o); });
+  tags.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; document.getElementById('filterTag').appendChild(o); });
+
+  ids.forEach(id => { document.getElementById(id).value = saved[id]; });
+}
+
+function getFiltered() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const status = document.getElementById('filterStatus').value;
+  const moscow = document.getElementById('filterMoscow').value;
+  const category = document.getElementById('filterCategory').value;
+  const release = document.getElementById('filterRelease').value;
+  const tag = document.getElementById('filterTag').value;
+
+  return DATA.filter(f => {
+    if (q && !f.id.toLowerCase().includes(q) && !f.title.toLowerCase().includes(q) && !f.tags.some(t => t.toLowerCase().includes(q))) return false;
+    if (status && f.status !== status) return false;
+    if (moscow && f.moscow !== moscow) return false;
+    if (category && f.category !== category) return false;
+    if (release && f.release !== release) return false;
+    if (tag && !f.tags.includes(tag)) return false;
+    return true;
+  });
+}
+
+function sortData(features) {
+  return [...features].sort((a, b) => {
+    let va, vb;
+    switch (sortField) {
+      case 'priority': va = a.priority ?? 999; vb = b.priority ?? 999; break;
+      case 'release': va = a.release ?? ''; vb = b.release ?? ''; break;
+      default: va = a[sortField] ?? ''; vb = b[sortField] ?? '';
+    }
+    const cmp = typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb));
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+const COL_COUNT = 8;
+const HEADERS = [
+  { key: 'id', label: '#' },
+  { key: 'title', label: 'Feature' },
+  { key: 'category', label: 'Category' },
+  { key: 'moscow', label: 'MoSCoW' },
+  { key: 'priority', label: 'Prio' },
+  { key: 'status', label: 'Status' },
+  { key: 'release', label: 'Release' },
+  { key: 'tags', label: 'Tags' },
+];
+
+function renderThead() {
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  HEADERS.forEach(h => {
+    const th = document.createElement('th');
+    th.textContent = h.label;
+    th.dataset.sort = h.key;
+    if (sortField === h.key) { th.classList.add('sorted'); if (sortDir === 'desc') th.classList.add('desc'); }
+    th.addEventListener('click', () => {
+      if (h.key === 'tags') return;
+      if (sortField === h.key) { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
+      else { sortField = h.key; sortDir = 'asc'; }
+      currentPage = 0;
+      render();
+    });
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  return thead;
+}
+
+function renderTable(features) {
+  const table = document.createElement('table');
+  table.appendChild(renderThead());
+
+  const tbody = document.createElement('tbody');
+  if (features.length === 0) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = COL_COUNT;
+    td.className = 'empty';
+    td.textContent = 'No features match';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  } else {
+    features.forEach(f => tbody.appendChild(renderRow(f)));
+  }
+  table.appendChild(tbody);
+  return table;
+}
+
+function renderRow(f) {
+  const tr = document.createElement('tr');
+
+  const tdId = document.createElement('td');
+  tdId.className = 'id-col';
+  tdId.textContent = f.id;
+  tr.appendChild(tdId);
+
+  const tdTitle = document.createElement('td');
+  tdTitle.className = 'title-col';
+  if (LIVE) {
+    const link = document.createElement('a');
+    link.className = 'title-link';
+    link.textContent = f.title;
+    link.href = '#';
+    link.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); openDoc(f.id); });
+    tdTitle.appendChild(link);
+    const editBtn = document.createElement('span');
+    editBtn.className = 'title-edit';
+    editBtn.textContent = '\u270E';
+    editBtn.title = 'Edit title';
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const input = document.createElement('input');
+      input.className = 'edit-input';
+      input.value = f.title;
+      tdTitle.innerHTML = '';
+      tdTitle.appendChild(input);
+      input.focus();
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') { apiUpdate(f.id, { title: input.value || null }); }
+        if (ev.key === 'Escape') render();
+      });
+      input.addEventListener('blur', () => { render(); });
+    });
+    tdTitle.appendChild(editBtn);
+  } else {
+    tdTitle.textContent = f.title;
+  }
+  tr.appendChild(tdTitle);
+
+  const tdCat = document.createElement('td');
+  tdCat.textContent = f.category;
+  makeEditable(tdCat, f.id, 'category', f.category, 'combo');
+  tr.appendChild(tdCat);
+
+  const tdMoscow = document.createElement('td');
+  const moscowSpan = document.createElement('span');
+  moscowSpan.className = moscowClass(f.moscow);
+  moscowSpan.textContent = f.moscow;
+  tdMoscow.appendChild(moscowSpan);
+  makeEditable(tdMoscow, f.id, 'moscow', f.moscow, 'select-moscow');
+  tr.appendChild(tdMoscow);
+
+  const tdPrio = document.createElement('td');
+  tdPrio.textContent = f.priority !== null ? String(f.priority) : '\u2014';
+  makeEditable(tdPrio, f.id, 'priority', f.priority, 'text');
+  tr.appendChild(tdPrio);
+
+  const tdStatus = document.createElement('td');
+  const statusSpan = document.createElement('span');
+  statusSpan.className = 'badge ' + statusClass(f.status);
+  statusSpan.textContent = f.status;
+  tdStatus.appendChild(statusSpan);
+  makeEditable(tdStatus, f.id, 'status', f.status, 'select-status');
+  tr.appendChild(tdStatus);
+
+  const tdRel = document.createElement('td');
+  if (f.release) {
+    const relSpan = document.createElement('span');
+    relSpan.className = 'release-badge';
+    relSpan.textContent = f.release;
+    tdRel.appendChild(relSpan);
+  } else {
+    tdRel.textContent = '\u2014';
+  }
+  makeEditable(tdRel, f.id, 'release', f.release, 'combo');
+  tr.appendChild(tdRel);
+
+  const tdTags = document.createElement('td');
+  if (f.tags.length > 0) {
+    f.tags.forEach(t => {
+      const span = document.createElement('span');
+      span.className = 'tag';
+      span.textContent = t;
+      tdTags.appendChild(span);
+    });
+  } else {
+    tdTags.textContent = '\u2014';
+  }
+  makeEditable(tdTags, f.id, 'tags', f.tags, 'tags');
+  tr.appendChild(tdTags);
+
+  return tr;
+}
+
+function renderGroupedTable(groups) {
+  const table = document.createElement('table');
+  table.appendChild(renderThead());
+  const tbody = document.createElement('tbody');
+  Object.keys(groups).sort().forEach(k => {
+    // Group header as a spanning row
+    const hdr = document.createElement('tr');
+    hdr.className = 'group-header';
+    const hdrTd = document.createElement('td');
+    hdrTd.colSpan = COL_COUNT;
+    hdrTd.innerHTML = esc(k) + ' <span class="count">(' + groups[k].length + ')</span>';
+    hdr.appendChild(hdrTd);
+    tbody.appendChild(hdr);
+    groups[k].forEach(f => tbody.appendChild(renderRow(f)));
+  });
+  table.appendChild(tbody);
+  return table;
+}
+
+function buildPagination(total) {
+  const totalPages = Math.ceil(total / pageSize);
+  if (currentPage >= totalPages) currentPage = Math.max(0, totalPages - 1);
+
+  const bar = document.createElement('div');
+  bar.className = 'pagination';
+
+  // Page size selector
+  const sizeLabel = document.createElement('span');
+  sizeLabel.textContent = 'Show:';
+  bar.appendChild(sizeLabel);
+  const sizeSel = document.createElement('select');
+  [10, 25, 50, 100].forEach(n => {
+    const o = document.createElement('option');
+    o.value = String(n); o.textContent = String(n);
+    if (n === pageSize) o.selected = true;
+    sizeSel.appendChild(o);
+  });
+  sizeSel.addEventListener('change', () => {
+    pageSize = parseInt(sizeSel.value, 10);
+    currentPage = 0;
+    try { localStorage.setItem('featmap-pageSize', String(pageSize)); } catch {}
+    render();
+  });
+  bar.appendChild(sizeSel);
+
+  // Info
+  const start = currentPage * pageSize + 1;
+  const end = Math.min((currentPage + 1) * pageSize, total);
+  const info = document.createElement('span');
+  info.textContent = start + '\u2013' + end + ' of ' + total;
+  bar.appendChild(info);
+
+  if (totalPages <= 1) return bar;
+
+  // Prev
+  const prev = document.createElement('button');
+  prev.className = 'page-btn'; prev.textContent = '\u2039 Prev';
+  prev.disabled = currentPage === 0;
+  prev.addEventListener('click', () => { currentPage--; render(); });
+  bar.appendChild(prev);
+
+  // Page numbers
+  const nums = document.createElement('div');
+  nums.className = 'page-nums';
+  for (let i = 0; i < totalPages; i++) {
+    // Show first, last, current, and neighbors; ellipsis for gaps
+    if (totalPages > 7 && i > 1 && i < totalPages - 2 && Math.abs(i - currentPage) > 1) {
+      if (i === 2 || i === totalPages - 3) {
+        const dot = document.createElement('span');
+        dot.className = 'page-num'; dot.textContent = '\u2026'; dot.style.cursor = 'default';
+        nums.appendChild(dot);
+      }
+      continue;
+    }
+    const btn = document.createElement('button');
+    btn.className = 'page-num' + (i === currentPage ? ' active' : '');
+    btn.textContent = String(i + 1);
+    btn.addEventListener('click', () => { currentPage = i; render(); });
+    nums.appendChild(btn);
+  }
+  bar.appendChild(nums);
+
+  // Next
+  const next = document.createElement('button');
+  next.className = 'page-btn'; next.textContent = 'Next \u203A';
+  next.disabled = currentPage >= totalPages - 1;
+  next.addEventListener('click', () => { currentPage++; render(); });
+  bar.appendChild(next);
+
+  return bar;
+}
+
+// --- Milestone view ---
+const MOSCOW_ORDER = ['MUST', 'SHOULD', 'COULD', 'WONT'];
+const MOSCOW_COLORS = { MUST: 'var(--red)', SHOULD: 'var(--yellow)', COULD: 'var(--blue)', WONT: 'var(--gray)' };
+const STATUS_ORDER = ['Done', 'In Progress', 'Planned', 'Rejected'];
+
+function buildMilestoneData(features) {
+  const milestones = {};
+  features.forEach(f => {
+    const key = f.release || '(unassigned)';
+    if (!milestones[key]) milestones[key] = { name: key, features: [], done: 0, inProgress: 0, planned: 0, rejected: 0, moscow: {} };
+    const m = milestones[key];
+    m.features.push(f);
+    if (f.status === 'Done') m.done++;
+    else if (f.status === 'In Progress') m.inProgress++;
+    else if (f.status === 'Planned') m.planned++;
+    else m.rejected++;
+    m.moscow[f.moscow] = (m.moscow[f.moscow] || 0) + 1;
+  });
+  // Sort: named milestones first (alphabetical), unassigned last
+  return Object.values(milestones).sort((a, b) => {
+    if (a.name === '(unassigned)') return 1;
+    if (b.name === '(unassigned)') return -1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+function renderProgressRing(pct) {
+  const r = 27, c = 2 * Math.PI * r;
+  const offset = c - (pct / 100) * c;
+  const el = document.createElement('div');
+  el.className = 'ms-ring';
+  el.innerHTML = '<svg width="64" height="64" viewBox="0 0 64 64">' +
+    '<circle class="ring-bg" cx="32" cy="32" r="' + r + '"/>' +
+    '<circle class="ring-fg" cx="32" cy="32" r="' + r + '" stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + offset.toFixed(1) + '"/>' +
+    '</svg><div class="ring-pct">' + Math.round(pct) + '%</div>';
+  return el;
+}
+
+function renderMilestoneCard(m) {
+  const total = m.features.length;
+  const pct = total > 0 ? (m.done / total) * 100 : 0;
+
+  const card = document.createElement('div');
+  card.className = 'ms-card' + (m.name === '(unassigned)' ? ' ms-unassigned' : '');
+
+  // Header: ring + name + count
+  const header = document.createElement('div');
+  header.className = 'ms-header';
+  header.appendChild(renderProgressRing(pct));
+  const info = document.createElement('div');
+  info.style.flex = '1';
+  const name = document.createElement('div');
+  name.className = 'ms-name';
+  name.textContent = m.name;
+  info.appendChild(name);
+  const count = document.createElement('div');
+  count.className = 'ms-count';
+  count.textContent = m.done + ' / ' + total + ' done';
+  info.appendChild(count);
+  header.appendChild(info);
+  card.appendChild(header);
+
+  // Status bar
+  const bar = document.createElement('div');
+  bar.className = 'ms-bar';
+  if (total > 0) {
+    [['ms-bar-done', m.done], ['ms-bar-wip', m.inProgress], ['ms-bar-planned', m.planned], ['ms-bar-rejected', m.rejected]].forEach(([cls, n]) => {
+      if (n > 0) {
+        const seg = document.createElement('div');
+        seg.className = 'ms-bar-seg ' + cls;
+        seg.style.width = ((n / total) * 100).toFixed(1) + '%';
+        bar.appendChild(seg);
+      }
+    });
+  }
+  card.appendChild(bar);
+
+  // Status counts
+  const stats = document.createElement('div');
+  stats.className = 'ms-stats';
+  [['var(--green)', 'Done', m.done], ['var(--yellow)', 'In Progress', m.inProgress], ['var(--accent)', 'Planned', m.planned], ['var(--gray)', 'Rejected', m.rejected]].forEach(([color, label, n]) => {
+    if (n > 0) {
+      const stat = document.createElement('div');
+      stat.className = 'ms-stat';
+      stat.innerHTML = '<span class="ms-dot" style="background:' + color + '"></span>' + label + ' ' + n;
+      stats.appendChild(stat);
+    }
+  });
+  card.appendChild(stats);
+
+  // MoSCoW breakdown
+  const moscow = document.createElement('div');
+  moscow.className = 'ms-moscow';
+  MOSCOW_ORDER.forEach(key => {
+    const n = m.moscow[key];
+    if (n) {
+      const item = document.createElement('span');
+      item.className = 'ms-moscow-item';
+      item.style.background = MOSCOW_COLORS[key] + '22';
+      item.style.color = MOSCOW_COLORS[key];
+      item.textContent = key + ' ' + n;
+      moscow.appendChild(item);
+    }
+  });
+  card.appendChild(moscow);
+
+  return card;
+}
+
+// Track collapsed state per milestone
+const msCollapsed = {};
+
+function renderMilestoneSection(m) {
+  const section = document.createElement('div');
+  section.className = 'ms-section';
+  const total = m.features.length;
+  const isCollapsed = msCollapsed[m.name] ?? false;
+
+  // Header
+  const hdr = document.createElement('div');
+  hdr.className = 'ms-section-header';
+  const arrow = document.createElement('span');
+  arrow.className = 'ms-arrow' + (isCollapsed ? '' : ' open');
+  arrow.textContent = '\u25B6';
+  hdr.appendChild(arrow);
+  const title = document.createElement('span');
+  title.className = 'ms-section-title';
+  title.textContent = m.name;
+  hdr.appendChild(title);
+  const meta = document.createElement('span');
+  meta.className = 'ms-section-meta';
+  meta.textContent = m.done + '/' + total + ' done';
+  hdr.appendChild(meta);
+
+  const body = document.createElement('div');
+  body.className = 'ms-section-body' + (isCollapsed ? ' collapsed' : '');
+
+  hdr.addEventListener('click', () => {
+    msCollapsed[m.name] = !msCollapsed[m.name];
+    arrow.classList.toggle('open');
+    body.classList.toggle('collapsed');
+  });
+  section.appendChild(hdr);
+
+  // Sort features: Done first, then In Progress, Planned, Rejected
+  const sorted = [...m.features].sort((a, b) => {
+    const ai = STATUS_ORDER.indexOf(a.status), bi = STATUS_ORDER.indexOf(b.status);
+    if (ai !== bi) return ai - bi;
+    return (a.priority ?? 999) - (b.priority ?? 999);
+  });
+
+  const table = document.createElement('table');
+  table.appendChild(renderThead());
+  const tbody = document.createElement('tbody');
+  sorted.forEach(f => tbody.appendChild(renderRow(f)));
+  table.appendChild(tbody);
+  body.appendChild(table);
+  section.appendChild(body);
+  return section;
+}
+
+function renderMilestoneView(features) {
+  const milestones = buildMilestoneData(features);
+  const container = document.createElement('div');
+
+  // Cards grid
+  const grid = document.createElement('div');
+  grid.className = 'ms-grid';
+  milestones.forEach(m => grid.appendChild(renderMilestoneCard(m)));
+  container.appendChild(grid);
+
+  // Expandable sections
+  milestones.forEach(m => container.appendChild(renderMilestoneSection(m)));
+
+  return container;
+}
+
+function render() {
+  const filtered = getFiltered();
+  const sorted = sortData(filtered);
+  const groupByVal = document.getElementById('groupBy').value;
+  const content = document.getElementById('content');
+
+  const done = filtered.filter(f => f.status === 'Done').length;
+  const inProg = filtered.filter(f => f.status === 'In Progress').length;
+  const planned = filtered.filter(f => f.status === 'Planned').length;
+  document.getElementById('stats').innerHTML =
+    '<span>' + filtered.length + ' features</span>' +
+    '<span>Done: ' + done + '</span>' +
+    '<span>In Progress: ' + inProg + '</span>' +
+    '<span>Planned: ' + planned + '</span>';
+
+  content.innerHTML = '';
+
+  if (currentView === 'milestones') {
+    content.appendChild(renderMilestoneView(filtered));
+  } else if (!groupByVal) {
+    const paged = sorted.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
+    content.appendChild(renderTable(paged));
+    content.appendChild(buildPagination(sorted.length));
+  } else {
+    const groups = {};
+    for (const f of sorted) {
+      let keys;
+      if (groupByVal === 'tags') {
+        keys = f.tags.length > 0 ? f.tags : ['(untagged)'];
+      } else {
+        keys = [f[groupByVal] ?? '(none)'];
+      }
+      for (const k of keys) {
+        if (!groups[k]) groups[k] = [];
+        groups[k].push(f);
+      }
+    }
+    content.appendChild(renderGroupedTable(groups));
+  }
+}
+
+populateFilters();
+render();
+
+document.getElementById('search').addEventListener('input', () => { currentPage = 0; render(); });
+document.querySelectorAll('select').forEach(s => s.addEventListener('change', () => { currentPage = 0; render(); }));
+</script>
+</body>
+</html>

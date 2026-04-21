@@ -1,0 +1,14 @@
+{
+  "id": "FEAT001",
+  "title": "Task management dashboard",
+  "category": "Tasks",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Planned",
+  "release": "POST-MVP",
+  "createdAt": "2026-04-02T14:48:40.287Z",
+  "updatedAt": "2026-04-03T21:00:50.093Z",
+  "tags": [],
+  "okrLink": null,
+  "type": "feature"
+}

@@ -1,0 +1,20 @@
+{
+  "id": "FEAT021",
+  "title": "Data encryption at rest for sensitive JSON files",
+  "category": "Data",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "MVP",
+  "createdAt": "2026-04-04T12:39:02.042Z",
+  "updatedAt": "2026-04-06T13:34:24.019Z",
+  "tags": [
+    "security",
+    "privacy",
+    "encryption",
+    "filesystem",
+    "cross-platform"
+  ],
+  "okrLink": null,
+  "type": "feature"
+}

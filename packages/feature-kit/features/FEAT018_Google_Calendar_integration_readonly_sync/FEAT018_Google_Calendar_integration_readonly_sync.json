@@ -1,0 +1,20 @@
+{
+  "id": "FEAT018",
+  "title": "Google Calendar integration (read-only sync)",
+  "category": "Integrations",
+  "moscow": "SHOULD",
+  "priority": 2,
+  "status": "Code Reviewed",
+  "release": "v4.1",
+  "createdAt": "2026-04-03T20:55:28.752Z",
+  "updatedAt": "2026-04-13T10:06:29.121Z",
+  "tags": [
+    "google-calendar",
+    "integration",
+    "sync",
+    "oauth",
+    "calendar"
+  ],
+  "okrLink": null,
+  "type": "feature"
+}

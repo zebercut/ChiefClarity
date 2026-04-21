@@ -1,0 +1,661 @@
+{
+  "generatedAt": "2026-04-15T09:02:58.058Z",
+  "count": 44,
+  "features": [
+    {
+      "id": "FEAT001",
+      "title": "Task management dashboard",
+      "category": "Tasks",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Planned",
+      "release": "POST-MVP",
+      "tags": [],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT002",
+      "title": "Calendar experience",
+      "category": "Calendar",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Planned",
+      "release": "POST-MVP",
+      "tags": [],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT021",
+      "title": "Data encryption at rest for sensitive JSON files",
+      "category": "Data",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "MVP",
+      "tags": [
+        "security",
+        "privacy",
+        "encryption",
+        "filesystem",
+        "cross-platform"
+      ],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT028",
+      "title": "Tasks tab with prioritized view, search, grouping, and filtering",
+      "category": "Tasks",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.1",
+      "tags": [
+        "tasks",
+        "ui",
+        "search",
+        "filtering",
+        "tasks-tab"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT033",
+      "title": "Two-phase entity retrieval for info lookup",
+      "category": "Architecture",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Rejected",
+      "release": "v2.4",
+      "tags": [
+        "retrieval",
+        "llm",
+        "architecture",
+        "info-lookup",
+        "encryption-safe"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT037",
+      "title": "Core context floor and pre-computed assembler views for cross-domain accuracy",
+      "category": "LLM Pipeline",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Rejected",
+      "release": "v2.2",
+      "tags": [
+        "assembler",
+        "accuracy",
+        "context",
+        "calendar",
+        "tasks"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT039",
+      "title": "Day Week Month objective layers with weekly review ritual",
+      "category": "Focus Planning",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Planned",
+      "release": "v2.3",
+      "tags": [
+        "objectives",
+        "planning",
+        "okr",
+        "weekly-review",
+        "focus"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT041",
+      "title": "Database migration to libSQL with SQLCipher encryption and vector index",
+      "category": "Data Layer",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v4.0",
+      "tags": [
+        "database",
+        "libsql",
+        "sqlcipher",
+        "encryption",
+        "migration",
+        "vector-index",
+        "foundation"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT042",
+      "title": "Semantic retrieval layer with embedding indexer cross link auto population and assembler relevance pre filtering",
+      "category": "LLM Pipeline",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v4.0",
+      "tags": [
+        "embeddings",
+        "semantic-search",
+        "vector-index",
+        "retrieval",
+        "rag",
+        "libsql",
+        "assembler"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT043",
+      "title": "Two-stage LLM reasoning architecture with triage-driven context loading",
+      "category": "Architecture",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Code Reviewed",
+      "release": "v4.0",
+      "tags": [
+        "llm",
+        "reasoning",
+        "triage",
+        "architecture",
+        "sonnet",
+        "haiku"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT045",
+      "title": "Reactive focus brief with tiered refresh and delta-aware replanning",
+      "category": "Focus Planning",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Code Reviewed",
+      "release": "v4.0",
+      "tags": [
+        "brief",
+        "reactive",
+        "planning",
+        "patch",
+        "refresh",
+        "delta"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT046",
+      "title": "Focus Brief UI redesign with interactive sections and reduced chat noise",
+      "category": "UX",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Code Reviewed",
+      "release": "v4.0",
+      "tags": [
+        "ux",
+        "brief",
+        "focus",
+        "interactive",
+        "chat",
+        "companion",
+        "redesign"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT047",
+      "title": "Data hygiene with LLM-assisted cleanup",
+      "category": "Data Quality",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v4.0",
+      "tags": [
+        "hygiene",
+        "data-quality",
+        "dedup",
+        "cleanup",
+        "automation"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT003",
+      "title": "Resilient multi-modal input",
+      "category": "Chat",
+      "moscow": "MUST",
+      "priority": 2,
+      "status": "Planned",
+      "release": "POST-MVP",
+      "tags": [],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT017",
+      "title": "One-liner open source setup (npx create-chief-clarity)",
+      "category": "Platform",
+      "moscow": "SHOULD",
+      "priority": 2,
+      "status": "Planned",
+      "release": "POST-MVP",
+      "tags": [],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT018",
+      "title": "Google Calendar integration (read-only sync)",
+      "category": "Integrations",
+      "moscow": "SHOULD",
+      "priority": 2,
+      "status": "Code Reviewed",
+      "release": "v4.1",
+      "tags": [
+        "google-calendar",
+        "integration",
+        "sync",
+        "oauth",
+        "calendar"
+      ],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT020",
+      "title": "Capability Registry Plugin System",
+      "category": "Architecture",
+      "moscow": "SHOULD",
+      "priority": 2,
+      "status": "Planned",
+      "release": "POST-MVP",
+      "tags": [],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT023",
+      "title": "Topic Repository core system",
+      "category": "Data",
+      "moscow": "MUST",
+      "priority": 2,
+      "status": "Design Reviewed",
+      "release": "v2.1",
+      "tags": [
+        "topics",
+        "knowledge",
+        "notes"
+      ],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT027",
+      "title": "App Authentication Gate with Local PIN and Optional Biometrics",
+      "category": "Security",
+      "moscow": "MUST",
+      "priority": 2,
+      "status": "Planned",
+      "release": "v2.1",
+      "tags": [
+        "auth",
+        "security",
+        "pin",
+        "biometrics"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT038",
+      "title": "Multi-intent router with primary and secondary intents",
+      "category": "LLM Pipeline",
+      "moscow": "MUST",
+      "priority": 2,
+      "status": "Rejected",
+      "release": "v2.2",
+      "tags": [
+        "router",
+        "intent",
+        "assembler",
+        "accuracy"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT040",
+      "title": "Calendar admission control with objective impact analysis",
+      "category": "Calendar",
+      "moscow": "MUST",
+      "priority": 2,
+      "status": "Planned",
+      "release": "v2.3",
+      "tags": [
+        "calendar",
+        "conflict",
+        "admission-control",
+        "objectives",
+        "focus"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT044",
+      "title": "Capacitor native DB and embeddings support",
+      "category": "Platform",
+      "moscow": "MUST",
+      "priority": 2,
+      "status": "Planned",
+      "release": "v4.1",
+      "tags": [
+        "capacitor",
+        "mobile",
+        "database",
+        "embeddings",
+        "sqlite"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT004",
+      "title": "Smart recurring suggestions",
+      "category": "Proactive",
+      "moscow": "SHOULD",
+      "priority": 3,
+      "status": "Planned",
+      "release": "POST-MVP",
+      "tags": [],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT006",
+      "title": "Data portability & integrations ",
+      "category": "Integrations",
+      "moscow": "SHOULD",
+      "priority": 3,
+      "status": "Planned",
+      "release": "POST-MVP",
+      "tags": [],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT022",
+      "title": "Per-intent model routing for cost optimization",
+      "category": "Infrastructure",
+      "moscow": "SHOULD",
+      "priority": 3,
+      "status": "Done",
+      "release": "MVP",
+      "tags": [
+        "llm",
+        "cost",
+        "performance"
+      ],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT024",
+      "title": "Topic auto-promotion with periodic background detection",
+      "category": "Data",
+      "moscow": "SHOULD",
+      "priority": 3,
+      "status": "Planned",
+      "release": "v2.2",
+      "tags": [
+        "topics",
+        "knowledge",
+        "automation"
+      ],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT035",
+      "title": "In-App Settings Panel",
+      "category": "UX",
+      "moscow": "MUST",
+      "priority": 3,
+      "status": "Planned",
+      "release": "v2.2",
+      "tags": [
+        "settings",
+        "configuration",
+        "ux",
+        "onboarding",
+        "mobile"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT019",
+      "title": "Message queue & chat pipeline",
+      "category": "Chat",
+      "moscow": "MUST",
+      "priority": 4,
+      "status": "Planned",
+      "release": "v2.1",
+      "tags": [
+        "ux",
+        "chat",
+        "queue"
+      ],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT032",
+      "title": "Tasks tab learning loop for adaptive priority weights",
+      "category": "Tasks",
+      "moscow": "COULD",
+      "priority": 4,
+      "status": "Planned",
+      "release": "v2.4",
+      "tags": [
+        "tasks",
+        "ui",
+        "learning",
+        "hitl",
+        "tasks-tab"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT034",
+      "title": "Data Export (Tasks, Events, Notes, Topics)",
+      "category": "Data Management",
+      "moscow": "SHOULD",
+      "priority": 4,
+      "status": "Planned",
+      "release": "v2.2",
+      "tags": [
+        "export",
+        "backup",
+        "data",
+        "portability"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT036",
+      "title": "Google Drive Storage Integration",
+      "category": "Sync & Storage",
+      "moscow": "COULD",
+      "priority": 4,
+      "status": "Planned",
+      "release": "v2.3",
+      "tags": [
+        "google-drive",
+        "sync",
+        "storage",
+        "mobile",
+        "oauth",
+        "backup"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT005",
+      "title": "Mobile-native experience",
+      "category": "Platform",
+      "moscow": "COULD",
+      "priority": 5,
+      "status": "Planned",
+      "release": "POST-MVP",
+      "tags": [],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT025",
+      "title": "Multi-LLM provider support with setup and settings UI",
+      "category": "Infrastructure",
+      "moscow": "COULD",
+      "priority": 5,
+      "status": "Planned",
+      "release": "POST-MVP",
+      "tags": [
+        "llm",
+        "multi-provider",
+        "settings",
+        "openai"
+      ],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT026",
+      "title": "Bulk note sync batch processor",
+      "category": "Performance",
+      "moscow": "SHOULD",
+      "priority": 6,
+      "status": "Rejected",
+      "release": "v2.1",
+      "tags": [
+        "tokens",
+        "optimization",
+        "notes",
+        "batch"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT007",
+      "title": "Conversational chat interface",
+      "category": "Chat",
+      "moscow": "MUST",
+      "priority": null,
+      "status": "Done",
+      "release": "MVP",
+      "tags": [],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT008",
+      "title": "Focus Dashboard & daily planning",
+      "category": "Focus",
+      "moscow": "MUST",
+      "priority": null,
+      "status": "Done",
+      "release": "MVP",
+      "tags": [],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT009",
+      "title": "Proactive intelligence engine",
+      "category": "Proactive",
+      "moscow": "MUST",
+      "priority": null,
+      "status": "Done",
+      "release": "MVP",
+      "tags": [],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT010",
+      "title": "Autonomous background scheduler",
+      "category": "Runner",
+      "moscow": "MUST",
+      "priority": null,
+      "status": "Done",
+      "release": "MVP",
+      "tags": [],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT011",
+      "title": "Continuous data sync & hygiene",
+      "category": "Data",
+      "moscow": "MUST",
+      "priority": null,
+      "status": "Done",
+      "release": "MVP",
+      "tags": [],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT012",
+      "title": "Reliable data layer",
+      "category": "Data",
+      "moscow": "MUST",
+      "priority": null,
+      "status": "Done",
+      "release": "MVP",
+      "tags": [],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT013",
+      "title": "Cross-platform deployment",
+      "category": "Platform",
+      "moscow": "MUST",
+      "priority": null,
+      "status": "Done",
+      "release": "MVP",
+      "tags": [],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT014",
+      "title": "Theme system",
+      "category": "UI",
+      "moscow": "SHOULD",
+      "priority": null,
+      "status": "Done",
+      "release": "MVP",
+      "tags": [],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT015",
+      "title": "Multi-user",
+      "category": "Chat",
+      "moscow": "WONT",
+      "priority": null,
+      "status": "Rejected",
+      "release": null,
+      "tags": [],
+      "type": "feature"
+    },
+    {
+      "id": "FEAT016",
+      "title": "OKR goal tracking with dual-measurement",
+      "category": "OKR",
+      "moscow": "MUST",
+      "priority": null,
+      "status": "Done",
+      "release": "MVP",
+      "tags": [],
+      "type": "feature"
+    }
+  ]
+}

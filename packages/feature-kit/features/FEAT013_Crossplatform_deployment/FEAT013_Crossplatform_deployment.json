@@ -1,0 +1,14 @@
+{
+  "id": "FEAT013",
+  "title": "Cross-platform deployment",
+  "category": "Platform",
+  "moscow": "MUST",
+  "priority": null,
+  "status": "Done",
+  "release": "MVP",
+  "createdAt": "2026-04-02T14:48:40.287Z",
+  "updatedAt": "2026-04-03T00:09:01.111Z",
+  "tags": [],
+  "okrLink": null,
+  "type": "feature"
+}

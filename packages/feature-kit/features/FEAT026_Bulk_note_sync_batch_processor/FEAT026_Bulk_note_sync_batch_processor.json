@@ -1,0 +1,24 @@
+{
+  "id": "FEAT026",
+  "title": "Bulk note sync batch processor",
+  "category": "Performance",
+  "moscow": "SHOULD",
+  "priority": 6,
+  "status": "Rejected",
+  "release": "v2.1",
+  "createdAt": "2026-04-05T22:57:23.716Z",
+  "updatedAt": "2026-04-10T01:01:42.339Z",
+  "tags": [
+    "tokens",
+    "optimization",
+    "notes",
+    "batch"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

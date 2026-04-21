@@ -1,0 +1,9 @@
+[submodule "packages/featmap"]
+	path = packages/featmap
+	url = https://github.com/zebercut/featmap.git
+[submodule "ADLC"]
+	path = ADLC
+	url = https://github.com/zebercut/ADLC
+[submodule "George"]
+	path = George
+	url = https://github.com/zebercut/George

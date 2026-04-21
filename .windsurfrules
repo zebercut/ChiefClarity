@@ -1,0 +1,68 @@
+# Chief Clarity v2 - Windsurf Rules
+
+## Architecture Documentation (MANDATORY)
+
+When adding new functionality, changing architecture, adding new data files, new intents, new modules, or modifying the data flow, you MUST update `docs/new_architecture_typescript.md` to reflect the changes.
+
+What to update:
+- New data files: Section 4 (Data File Architecture) + Section 3 (Project Structure)
+- New modules: Section 6 (Module Responsibilities)
+- New intents: Section 6 (Assembler Context by Intent) + Section 8 (Token Budgets)
+- New types: Section 5 (TypeScript Interfaces)
+- Architecture decisions: Section 9 (Architecture Decision Record)
+- New features: Section 12 (Feature Catalog)
+- Changed data flow: Section 6 diagram
+
+Update the doc AFTER code compiles, BEFORE marking the task done.
+
+## README (MANDATORY)
+
+When adding new features, scripts, data files, modules, or changing how to run the app, you MUST update `README.md`.
+
+What to update:
+- New features: feature list + relevant section
+- New scripts: Scripts table
+- New data files: Data Files table
+- New modules: Modules table
+- Changed structure: project tree
+- Changed run commands: Quick Start + Scripts
+
+Update AFTER code works, BEFORE marking the task done.
+
+## Feature Backlog (MANDATORY)
+
+Maintain features in `packages/feature-kit/features/`.
+Each feature is a folder (e.g. `FEAT019_Message_queue/`) with a `.json` metadata file and `.md` description.
+- New features: create folder + json + md, update `_manifest.json`
+- Status changes: update the json file's `status` field through the pipeline:
+  `Planned` → `Design Reviewed` → `In Progress` → `Code Reviewed` → `Testing` → `Done` (or `Rejected`)
+- Details: edit the `.md` file
+- Update when features are discussed, planned, started, or completed.
+
+## App Runs Continuously (CRITICAL)
+
+The app stays open for days. NEVER design features that only trigger on app load/startup/mount.
+- Every periodic check must run on a recurring setInterval, not just on mount or tab focus.
+- Inbox/nudges: every 2 minutes. State refresh: every 5 minutes.
+- All intervals respect loadingRef/inboxProcessingRef guards.
+- The headless runner handles background work when the app is closed.
+
+## No Real User Data in Code (CRITICAL)
+
+NEVER include real user data in any committed file. This includes:
+- System prompts (`prompts.ts`), LLM instructions, code comments, docs, examples
+- Real names (family, contacts, companies), real activities, real locations
+- Use generic placeholders: "Task A", "Example Corp", "Child A", "weekly activity"
+- Before completing any task, review all modified files for real data leaks.
+
+## Core Rules
+
+- Sacred boundary: TypeScript owns deterministic logic. LLM owns judgment. Neither trespasses.
+- Single LLM call per user phrase. No multi-agent pipelines.
+- LLM returns structured JSON via tool use only. TypeScript executes.
+- Per-intent context assembly. Never send all data to all intents.
+- Token budgets enforced by assembler. Lifestyle/profile data is never truncated.
+- Atomic file writes via filesystem.ts.
+- User timezone from state.userProfile.timezone for all date operations.
+- No real user data in code, comments, or examples.
+- Chat replies for planning must be 1-2 sentences. Details go in focusBrief write.

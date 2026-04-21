@@ -1,0 +1,18 @@
+{
+  "id": "FEAT019",
+  "title": "Message queue & chat pipeline",
+  "category": "Chat",
+  "moscow": "MUST",
+  "priority": 4,
+  "status": "Planned",
+  "release": "v2.1",
+  "createdAt": "2026-04-04T12:00:00.000Z",
+  "updatedAt": "2026-04-10T01:02:28.755Z",
+  "tags": [
+    "ux",
+    "chat",
+    "queue"
+  ],
+  "okrLink": null,
+  "type": "feature"
+}

@@ -1,0 +1,25 @@
+{
+  "id": "FEAT039",
+  "title": "Day Week Month objective layers with weekly review ritual",
+  "category": "Focus Planning",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Planned",
+  "release": "v2.3",
+  "createdAt": "2026-04-07T12:42:12.408Z",
+  "updatedAt": "2026-04-07T12:42:12.408Z",
+  "tags": [
+    "objectives",
+    "planning",
+    "okr",
+    "weekly-review",
+    "focus"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

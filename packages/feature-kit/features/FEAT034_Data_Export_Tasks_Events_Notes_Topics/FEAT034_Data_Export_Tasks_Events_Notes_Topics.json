@@ -1,0 +1,24 @@
+{
+  "id": "FEAT034",
+  "title": "Data Export (Tasks, Events, Notes, Topics)",
+  "category": "Data Management",
+  "moscow": "SHOULD",
+  "priority": 4,
+  "status": "Planned",
+  "release": "v2.2",
+  "createdAt": "2026-04-07T00:29:05.845Z",
+  "updatedAt": "2026-04-10T01:03:09.459Z",
+  "tags": [
+    "export",
+    "backup",
+    "data",
+    "portability"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

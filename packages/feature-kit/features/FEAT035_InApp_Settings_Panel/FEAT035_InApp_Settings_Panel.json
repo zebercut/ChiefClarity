@@ -1,0 +1,25 @@
+{
+  "id": "FEAT035",
+  "title": "In-App Settings Panel",
+  "category": "UX",
+  "moscow": "MUST",
+  "priority": 3,
+  "status": "Planned",
+  "release": "v2.2",
+  "createdAt": "2026-04-07T01:18:14.791Z",
+  "updatedAt": "2026-04-10T01:02:19.227Z",
+  "tags": [
+    "settings",
+    "configuration",
+    "ux",
+    "onboarding",
+    "mobile"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

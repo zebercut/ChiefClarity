@@ -1,0 +1,26 @@
+name: Tests
+
+on:
+  push:
+    branches: [fz-dev-*, fz-dev-v2, main, master]
+  pull_request:
+    branches: [fz-dev-v2, main, master]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run tests
+        run: npm test

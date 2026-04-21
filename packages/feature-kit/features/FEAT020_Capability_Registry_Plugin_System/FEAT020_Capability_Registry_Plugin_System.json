@@ -1,0 +1,14 @@
+{
+  "id": "FEAT020",
+  "title": "Capability Registry Plugin System",
+  "category": "Architecture",
+  "moscow": "SHOULD",
+  "priority": 2,
+  "status": "Planned",
+  "release": "POST-MVP",
+  "createdAt": "2026-04-04T12:31:32.295Z",
+  "updatedAt": "2026-04-04T12:35:44.025Z",
+  "tags": [],
+  "okrLink": null,
+  "type": "feature"
+}

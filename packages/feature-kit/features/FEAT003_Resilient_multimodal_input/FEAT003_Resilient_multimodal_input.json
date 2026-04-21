@@ -1,0 +1,14 @@
+{
+  "id": "FEAT003",
+  "title": "Resilient multi-modal input",
+  "category": "Chat",
+  "moscow": "MUST",
+  "priority": 2,
+  "status": "Planned",
+  "release": "POST-MVP",
+  "createdAt": "2026-04-02T14:48:40.287Z",
+  "updatedAt": "2026-04-03T00:09:42.240Z",
+  "tags": [],
+  "okrLink": null,
+  "type": "feature"
+}
