@@ -1,5 +1,8 @@
 # AI Personal Organizer — TypeScript/Expo Specification
 
+> **Scope:** this document describes the *current* implementation (v2 — single-agent, JSON-file-based).
+> **Target architecture:** see [architecture_v3_multi_agent.md](architecture_v3_multi_agent.md) for the multi-agent, multi-LLM, SQLite-backed evolution aligned with [vision.md](vision.md). As v3 components ship, update both files.
+>
 > **Platform**: iOS + Android (primary) via Expo + Capacitor. Desktop via Electron (Phase 5).
 > **No backend. No server. No database. All state lives in JSON files on the device.**
 
