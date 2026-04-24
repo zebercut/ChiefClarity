@@ -1,0 +1,21 @@
+{
+  "id": "FEAT049",
+  "title": "LLM-only intent router",
+  "category": "Core",
+  "moscow": "MUST",
+  "priority": 2,
+  "status": "Planned",
+  "release": "v2.3",
+  "createdAt": "2026-04-21T06:00:00.000Z",
+  "updatedAt": "2026-04-21T06:00:00.000Z",
+  "tags": [
+    "router",
+    "intent",
+    "classification",
+    "haiku",
+    "triage"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "progress": 0
+}

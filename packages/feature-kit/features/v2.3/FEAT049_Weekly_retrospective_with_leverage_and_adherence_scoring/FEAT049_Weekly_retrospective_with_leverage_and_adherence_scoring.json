@@ -1,0 +1,25 @@
+{
+  "id": "FEAT049",
+  "title": "Weekly retrospective with leverage and adherence scoring",
+  "category": "Focus Planning",
+  "moscow": "MUST",
+  "priority": 2,
+  "status": "Planned",
+  "release": "v2.3",
+  "createdAt": "2026-04-22T12:09:40.195Z",
+  "updatedAt": "2026-04-22T12:09:40.195Z",
+  "tags": [
+    "retro",
+    "planning",
+    "weekly-review",
+    "leverage",
+    "adherence"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}
