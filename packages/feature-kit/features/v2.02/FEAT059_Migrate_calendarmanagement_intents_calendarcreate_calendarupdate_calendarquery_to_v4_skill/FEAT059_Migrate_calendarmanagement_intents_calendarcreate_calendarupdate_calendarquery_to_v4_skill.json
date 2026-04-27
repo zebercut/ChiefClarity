@@ -1,0 +1,24 @@
+{
+  "id": "FEAT059",
+  "title": "Migrate calendar_management intents (calendar_create + calendar_update + calendar_query) to v4 skill",
+  "category": "Architecture",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v2.02",
+  "createdAt": "2026-04-27T12:53:39.234Z",
+  "updatedAt": "2026-04-27T14:51:43.847Z",
+  "tags": [
+    "skill-migration",
+    "calendar",
+    "batch-1",
+    "template-application"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

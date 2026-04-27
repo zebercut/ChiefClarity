@@ -326,7 +326,13 @@ function buildOkrProgress(state: AppState): Record<string, { activity: number; o
   return result;
 }
 
-function getActiveEvents(state: AppState) {
+/**
+ * Active events from today onward — filters out cancelled, archived,
+ * undated, and past events. Exported (FEAT059) so the v4 skill
+ * dispatcher resolver can reuse it for the `calendarEvents`,
+ * `calendarToday`, and `calendarNextSevenDays` context keys.
+ */
+export function getActiveEvents(state: AppState) {
   const today = getUserToday(state); // "YYYY-MM-DD"
   // Only include events from today onward with a valid datetime.
   // Events without a datetime are excluded — they have no place in a

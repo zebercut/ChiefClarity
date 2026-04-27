@@ -193,14 +193,16 @@ const SUPPORTED_KEYS = new Set([
   "userProfile",
   "objectives",
   "recentTasks",
-  "calendarToday",
-  "calendarNextSevenDays",
+  "calendarToday",          // FEAT055 declared, FEAT059 actually computes
+  "calendarNextSevenDays",  // FEAT055 declared, FEAT059 actually computes
   // FEAT057 — task_management context keys (also reusable by FEAT058+)
   "tasksIndex",
   "contradictionIndexDates",
   "topicList",
   "existingTopicHints",
   "userToday",
+  // FEAT059 — calendar_management
+  "calendarEvents",
 ]);
 
 function resolveContext(
@@ -272,7 +274,38 @@ function computeContextValue(key: string, state: Record<string, unknown>): unkno
       const hc = state.hotContext as { today?: string } | undefined;
       return hc?.today;
     }
-    // Flat lookup for the rest (priority_planning's keys + general_assistant's)
+    // FEAT059 — calendar branches. Use exported getActiveEvents for
+    // consistent filter semantics (skip cancelled/archived/undated/past).
+    case "calendarEvents": {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { getActiveEvents } = require("./assembler") as typeof import("./assembler");
+      return getActiveEvents(state as any);
+    }
+    case "calendarToday": {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { getActiveEvents } = require("./assembler") as typeof import("./assembler");
+      const today = (state.hotContext as { today?: string } | undefined)?.today;
+      if (!today) return [];
+      return getActiveEvents(state as any).filter((e: any) =>
+        typeof e.datetime === "string" && e.datetime.slice(0, 10) === today
+      );
+    }
+    case "calendarNextSevenDays": {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { getActiveEvents } = require("./assembler") as typeof import("./assembler");
+      const today = (state.hotContext as { today?: string } | undefined)?.today;
+      if (!today) return [];
+      // ISO date arithmetic: today through today+6 inclusive (7-day window).
+      const startD = new Date(today + "T00:00:00Z");
+      const endD = new Date(startD);
+      endD.setUTCDate(endD.getUTCDate() + 6);
+      const endISO = endD.toISOString().slice(0, 10);
+      return getActiveEvents(state as any).filter((e: any) => {
+        const d = typeof e.datetime === "string" ? e.datetime.slice(0, 10) : "";
+        return d >= today && d <= endISO;
+      });
+    }
+    // Flat lookup for the rest
     default:
       return key in state ? state[key] : undefined;
   }

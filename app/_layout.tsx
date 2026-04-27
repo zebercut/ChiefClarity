@@ -319,6 +319,7 @@ function applyConfig(c: AppConfig) {
     "general_assistant",
     "task_management",
     "notes_capture",
+    "calendar_management",
   ]);
 }
 
