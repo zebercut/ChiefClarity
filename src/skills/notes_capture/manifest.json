@@ -1,0 +1,28 @@
+{
+  "id": "notes_capture",
+  "version": "1.0.0",
+  "description": "Capture free-form notes and ideas verbatim. Handles 'save this idea', 'add a note', 'remember this', 'write this down', 'jot down', 'note that'. Captures the user's text exactly as said — no paraphrasing, no summarizing, no title extraction. Topic auto-tagging happens server-side in the executor based on the note text.",
+  "triggerPhrases": [
+    "save this idea",
+    "add a note",
+    "remember this",
+    "write this down",
+    "capture this",
+    "jot down",
+    "note that",
+    "save this",
+    "remember the idea"
+  ],
+  "structuralTriggers": ["/note", "/idea"],
+  "model": "haiku",
+  "dataSchemas": {
+    "read": ["notes", "topics", "objectives"],
+    "write": ["notes"]
+  },
+  "supportsAttachments": false,
+  "tools": ["submit_note_capture"],
+  "autoEvaluate": true,
+  "tokenBudget": 2000,
+  "promptLockedZones": [],
+  "surface": null
+}
