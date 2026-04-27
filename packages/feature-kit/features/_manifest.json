@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-04-27T14:51:43.885Z",
-  "count": 43,
+  "generatedAt": "2026-04-27T15:49:25.606Z",
+  "count": 44,
   "features": [
     {
       "id": "FEAT021",
@@ -359,6 +359,25 @@
         "calendar",
         "batch-1",
         "template-application"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT060",
+      "title": "Migrate inbox_triage / bulk_input to v4 skill",
+      "category": "Architecture",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "skill-migration",
+        "inbox",
+        "bulk-input",
+        "batch-1",
+        "template-application",
+        "multi-file-write"
       ],
       "type": "feature",
       "complexity": null

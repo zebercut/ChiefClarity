@@ -1,0 +1,26 @@
+{
+  "id": "FEAT060",
+  "title": "Migrate inbox_triage / bulk_input to v4 skill",
+  "category": "Architecture",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v2.02",
+  "createdAt": "2026-04-27T15:05:51.349Z",
+  "updatedAt": "2026-04-27T15:49:25.571Z",
+  "tags": [
+    "skill-migration",
+    "inbox",
+    "bulk-input",
+    "batch-1",
+    "template-application",
+    "multi-file-write"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

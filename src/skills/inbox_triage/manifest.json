@@ -1,0 +1,29 @@
+{
+  "id": "inbox_triage",
+  "version": "1.0.0",
+  "description": "Process free-form bulk-text dumps that mix tasks, calendar events, notes, recurring rules, observations, and structured facts. Handles the user pasting a multi-item blob into chat ('Task A by Friday. Meeting with Contact A Tue 3pm. Idea: Project X needs a kickoff doc.') and the timer-driven inbox.txt pipeline. Parses every item, deduplicates against existing tasks/events, and emits a multi-file write batch. NEVER creates recurring events as calendar entries — recurring rules become RecurringTasks.",
+  "triggerPhrases": [
+    "process my inbox",
+    "here's a brain dump",
+    "multiple things to capture",
+    "paste this batch",
+    "bunch of stuff to log",
+    "a few things at once",
+    "dump from my notes",
+    "process this list",
+    "log all of these",
+    "triage this batch"
+  ],
+  "structuralTriggers": ["/inbox", "/triage", "/dump"],
+  "model": "haiku",
+  "dataSchemas": {
+    "read": ["tasks", "calendar", "topics", "objectives", "userProfile"],
+    "write": ["tasks", "calendar", "notes", "contextMemory", "userObservations", "recurringTasks"]
+  },
+  "supportsAttachments": false,
+  "tools": ["submit_inbox_triage"],
+  "autoEvaluate": true,
+  "tokenBudget": 6000,
+  "promptLockedZones": [],
+  "surface": null
+}

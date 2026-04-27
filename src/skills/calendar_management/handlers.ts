@@ -110,7 +110,7 @@ export const submit_calendar_action: ToolHandler = async (args, ctx) => {
  * skill should fail closed on recurring attempts and ask the user
  * to retry through the recurring-task handler instead.
  */
-function stripRecurringFields(data: Partial<CalendarEvent>): Partial<CalendarEvent> {
+export function stripRecurringFields(data: Partial<CalendarEvent>): Partial<CalendarEvent> {
   const cleaned = { ...data };
   // The fields are deprecated on CalendarEvent but still present at runtime.
   delete (cleaned as any).recurring;
@@ -124,7 +124,7 @@ function stripRecurringFields(data: Partial<CalendarEvent>): Partial<CalendarEve
  * applyAdd default-branch sets `id` and `createdAt` for array-based
  * files, so we leave those.
  */
-function fillCalendarEventDefaults(input: Partial<CalendarEvent>): Record<string, unknown> {
+export function fillCalendarEventDefaults(input: Partial<CalendarEvent>): Record<string, unknown> {
   return {
     title: String(input.title ?? ""),
     datetime: input.datetime ?? "",

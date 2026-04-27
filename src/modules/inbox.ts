@@ -8,7 +8,8 @@ import {
   rebuildContradictionIndex,
 } from "./summarizer";
 import type { AppState, IntentResult, InboxResult, WriteOperation } from "../types";
-import { TOKEN_BUDGETS } from "./router";
+import { TOKEN_BUDGETS, getV4SkillsEnabled, routeToSkill } from "./router";
+import { dispatchSkill } from "./skillDispatcher";
 
 const INBOX_FILE = "inbox.txt";
 const STABILITY_DELAY = 500; // ms between reads for sync check
@@ -87,39 +88,110 @@ export async function processBundle(
 
   console.log(`[${source}] processing ${chunks.length} chunk(s), ~${estimateTokens(text)} tokens`);
 
+  const useV4 = getV4SkillsEnabled().has("inbox_triage");
+
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
-    const intent: IntentResult = {
-      type: "bulk_input",
-      tokenBudget: TOKEN_BUDGETS.bulk_input,
-      phrase: chunk,
-    };
 
-    const context = await assembleContext(intent, chunk, state, []);
-    const plan = await callLlm(context, "bulk_input");
+    if (useV4) {
+      const route = await routeToSkill({ phrase: chunk, directSkillId: "inbox_triage" });
+      const dispatch = await dispatchSkill(route, chunk, { state });
 
-    if (!plan) {
-      console.warn(`[${source}] chunk ${i + 1}/${chunks.length} returned no plan`);
+      if (!dispatch || dispatch.degraded) {
+        // Fall through to legacy for this chunk only when v4 degrades.
+        const legacyOk = await runLegacyChunk(chunk, state, source, i, chunks.length, replies, writes);
+        if (legacyOk.succeeded) anyChunkSucceeded = true;
+        totalWrites += legacyOk.writeCount;
+        continue;
+      }
+
+      const data = (dispatch.handlerResult as { data?: { writes?: WriteOperation[]; writeError?: string | null } } | null)?.data;
+      const chunkWrites = Array.isArray(data?.writes) ? data!.writes! : [];
+      const writeError = data?.writeError ?? null;
+
+      // Legacy parity: a chunk only counts as "succeeded" when applyWrites
+      // didn't fail. The handler swallows applyWrites errors into writeError
+      // (B1 pattern), so this is the only signal we have. If we set
+      // anyChunkSucceeded=true on a chunk whose writes never landed, the
+      // caller would clear the inbox and the user's content would be lost.
+      if (writeError) {
+        console.warn(`[${source}] chunk ${i + 1}/${chunks.length} v4 write failed: ${writeError} — keeping inbox for retry`);
+        if (dispatch.userMessage && dispatch.userMessage !== "(no message)") {
+          replies.push(dispatch.userMessage);
+        }
+        continue;
+      }
+
+      anyChunkSucceeded = true;
+
+      if (chunkWrites.length > 0) {
+        // Handler already called applyWrites — refresh derived state here
+        // (legacy parity: summaries/hotContext/contradictionIndex always
+        // rebuild on a successful write batch).
+        updateSummaries(state);
+        rebuildHotContext(state);
+        rebuildContradictionIndex(state);
+        totalWrites += chunkWrites.length;
+        writes.push(...chunkWrites);
+      }
+
+      if (dispatch.userMessage && dispatch.userMessage !== "(no message)") {
+        replies.push(dispatch.userMessage);
+      }
       continue;
     }
 
-    anyChunkSucceeded = true;
-
-    if (plan.writes.length > 0) {
-      await applyWrites(plan, state);
-      updateSummaries(state);
-      rebuildHotContext(state);
-      rebuildContradictionIndex(state);
-      totalWrites += plan.writes.length;
-      writes.push(...plan.writes);
-    }
-
-    if (plan.reply) {
-      replies.push(plan.reply);
-    }
+    const legacyOk = await runLegacyChunk(chunk, state, source, i, chunks.length, replies, writes);
+    if (legacyOk.succeeded) anyChunkSucceeded = true;
+    totalWrites += legacyOk.writeCount;
   }
 
   return { succeeded: anyChunkSucceeded, totalWrites, replies, writes };
+}
+
+/**
+ * Legacy bulk_input path for one chunk: assemble → callLlm → applyWrites
+ * → refresh derived state. Pulled out of the loop so the v4 path can call
+ * it as a fallback when dispatchSkill returns null/degraded for a chunk.
+ */
+async function runLegacyChunk(
+  chunk: string,
+  state: AppState,
+  source: string,
+  i: number,
+  total: number,
+  replies: string[],
+  writes: WriteOperation[]
+): Promise<{ succeeded: boolean; writeCount: number }> {
+  const intent: IntentResult = {
+    type: "bulk_input",
+    tokenBudget: TOKEN_BUDGETS.bulk_input,
+    phrase: chunk,
+  };
+
+  const context = await assembleContext(intent, chunk, state, []);
+  const plan = await callLlm(context, "bulk_input");
+
+  if (!plan) {
+    console.warn(`[${source}] chunk ${i + 1}/${total} returned no plan`);
+    return { succeeded: false, writeCount: 0 };
+  }
+
+  let writeCount = 0;
+  if (plan.writes.length > 0) {
+    await applyWrites(plan, state);
+    updateSummaries(state);
+    rebuildHotContext(state);
+    rebuildContradictionIndex(state);
+    writeCount = plan.writes.length;
+    writes.push(...plan.writes);
+  }
+
+  if (plan.reply) {
+    replies.push(plan.reply);
+  }
+
+  return { succeeded: true, writeCount };
 }
 
 /**

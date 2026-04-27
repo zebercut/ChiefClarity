@@ -87,7 +87,7 @@ export const submit_note_capture: ToolHandler = async (args, ctx) => {
  * function must update accordingly. Unit test asserts the produced
  * shape is structurally complete.
  */
-function fillNoteDefaults(input: Partial<Note> & { text?: string }): Record<string, unknown> {
+export function fillNoteDefaults(input: Partial<Note> & { text?: string }): Record<string, unknown> {
   return {
     text: String(input.text ?? ""),
     status: input.status ?? "pending",

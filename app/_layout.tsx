@@ -320,6 +320,7 @@ function applyConfig(c: AppConfig) {
     "task_management",
     "notes_capture",
     "calendar_management",
+    "inbox_triage",
   ]);
 }
 
