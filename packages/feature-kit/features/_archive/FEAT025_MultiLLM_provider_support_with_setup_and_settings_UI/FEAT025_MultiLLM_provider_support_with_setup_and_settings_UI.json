@@ -1,0 +1,19 @@
+{
+  "id": "FEAT025",
+  "title": "Multi-LLM provider support with setup and settings UI",
+  "category": "Infrastructure",
+  "moscow": "COULD",
+  "priority": 5,
+  "status": "Planned",
+  "release": "_archive",
+  "createdAt": "2026-04-05T11:02:16.885Z",
+  "updatedAt": "2026-04-26T23:16:46.178Z",
+  "tags": [
+    "llm",
+    "multi-provider",
+    "settings",
+    "openai"
+  ],
+  "okrLink": null,
+  "type": "feature"
+}

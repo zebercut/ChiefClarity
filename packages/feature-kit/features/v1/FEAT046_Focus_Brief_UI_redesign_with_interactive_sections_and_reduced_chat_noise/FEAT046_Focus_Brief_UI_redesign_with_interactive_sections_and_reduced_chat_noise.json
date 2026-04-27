@@ -1,0 +1,27 @@
+{
+  "id": "FEAT046",
+  "title": "Focus Brief UI redesign with interactive sections and reduced chat noise",
+  "category": "UX",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Code Reviewed",
+  "release": "v1",
+  "createdAt": "2026-04-12T15:52:04.166Z",
+  "updatedAt": "2026-04-26T23:16:46.224Z",
+  "tags": [
+    "ux",
+    "brief",
+    "focus",
+    "interactive",
+    "chat",
+    "companion",
+    "redesign"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

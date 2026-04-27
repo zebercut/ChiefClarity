@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { Slot, usePathname, useRouter } from "expo-router";
 import {
   Text,
@@ -9,6 +9,8 @@ import {
 } from "react-native";
 import { ConfigContext } from "../_layout";
 import type { Theme } from "../../src/constants/themes";
+import { loadSkillRegistry } from "../../src/modules/skillRegistry";
+import type { SkillSurface } from "../../src/types/skills";
 
 const DESKTOP_BREAKPOINT = 900;
 const SIDEBAR_WIDTH = 220;
@@ -21,13 +23,38 @@ interface NavItem {
   icon: string;
 }
 
-const NAV_ITEMS: NavItem[] = [
+const STATIC_NAV_ITEMS: NavItem[] = [
   { name: "chat", path: "/(tabs)/chat", label: "Chat", icon: "\u{1F4AC}" },
   { name: "tasks", path: "/(tabs)/tasks", label: "Tasks", icon: "\u2705" },
   { name: "notes", path: "/(tabs)/notes", label: "Notes", icon: "\u270D\uFE0F" },
   { name: "topics", path: "/(tabs)/topics", label: "Topics", icon: "\u{1F4DA}" },
   { name: "focus", path: "/(tabs)/focus", label: "Focus", icon: "\u{1F4CB}" },
 ];
+
+function surfaceToNavItem(s: SkillSurface): NavItem {
+  return { name: s.id, path: s.route, label: s.label, icon: s.icon };
+}
+
+// Static nav merged with skill-contributed surfaces. Surfaces append after
+// static items (vision principle #13: shell is stable, skills join).
+function useNavItems(): NavItem[] {
+  const [surfaces, setSurfaces] = useState<SkillSurface[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    loadSkillRegistry()
+      .then((reg) => {
+        if (cancelled) return;
+        setSurfaces(reg.getAllSurfaces());
+      })
+      .catch(() => {
+        // Loader logs its own warning; nav falls back to static items.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return [...STATIC_NAV_ITEMS, ...surfaces.map(surfaceToNavItem)];
+}
 
 // Match against the route segment so nested paths like /tasks/123 still
 // highlight the parent tab.
@@ -64,6 +91,7 @@ export default function TabsLayout() {
 function Sidebar({ theme }: { theme: Theme }) {
   const pathname = usePathname();
   const router = useRouter();
+  const navItems = useNavItems();
 
   return (
     <View
@@ -80,7 +108,7 @@ function Sidebar({ theme }: { theme: Theme }) {
       </View>
 
       <View style={desktop.nav}>
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const focused = isRouteFocused(pathname, item.name);
           return (
             <TouchableOpacity
@@ -141,6 +169,7 @@ function Sidebar({ theme }: { theme: Theme }) {
 function BottomBar({ theme }: { theme: Theme }) {
   const pathname = usePathname();
   const router = useRouter();
+  const navItems = useNavItems();
 
   return (
     <View
@@ -149,7 +178,7 @@ function BottomBar({ theme }: { theme: Theme }) {
         { backgroundColor: theme.bg, borderTopColor: theme.borderLight },
       ]}
     >
-      {NAV_ITEMS.map((item) => {
+      {navItems.map((item) => {
         const focused = pathname?.endsWith(`/${item.name}`) ?? false;
         const color = focused ? theme.accent : theme.textMuted;
         return (

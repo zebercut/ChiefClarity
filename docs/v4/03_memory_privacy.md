@@ -142,6 +142,12 @@ CREATE TABLE pending_improvements (
       "defaultWriteSkills": [],
       "sensitive": false
     },
+    "topics": {
+      "label": "Topics (themes aggregating tasks, notes, events, facts)",
+      "defaultReadSkills": ["topics", "daily_planning", "weekly_planning", "priority_planning", "notes", "research"],
+      "defaultWriteSkills": ["topics", "notes", "task_management", "calendar", "inbox_triage"],
+      "sensitive": false
+    },
     "attachments:work_reference": {
       "label": "Work Reference Documents",
       "defaultReadSkills": ["research", "notes", "priority_planning"],

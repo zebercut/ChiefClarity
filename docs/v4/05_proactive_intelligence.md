@@ -63,6 +63,9 @@ the user directly. They only produce signals.
 | **TopicDrift** | `topicDrift.ts` | Semantic shift in user's recent notes/conversations compared to prior period |
 | **CommitmentTracker** | `commitmentTracker.ts` | Phrases like "I'll do X" or "I'll reply by Y" detected in past chat with no follow-through |
 | **EnergyPattern** | `energyPattern.ts` | User's historically productive time windows vs. current scheduling (meetings stacking at high-energy times) |
+| **MoodSignal** | `moodSignal.ts` | Embedding-based detection of low-mood themes in recent notes/companion turns over trailing 72h (feeds companion check-ins) — see `08_companion.md` |
+| **FrictionSignal** | `frictionSignal.ts` | Behavioral detection: tasks rescheduled 3+ times, repeated start/abandon, sustained calendar overrun (feeds companion check-ins) — see `08_companion.md` |
+| **TopicEmergence** | `topicEmergence.ts` | Embedding-based clustering of recent tasks/notes/events; emits a signal when 5+ items cluster around a theme that isn't already a topic. Synthesizer turns this into a "make a topic?" nudge — see `10_topics.md` |
 
 ### Sensor signal format
 
@@ -179,6 +182,7 @@ Final gate before nudges reach the user. Applies:
 | Mute rules | User muted this sensor category → suppress for mute duration |
 | De-duplication | Same observation surfaced in last 48h → suppress |
 | Deadline exemption | `urgency: "high"` with type "deadline" or "conflict_predictor" bypasses quiet hours and caps |
+| Companion exemption | `skillToInvoke: "companion"` nudges have a separate per-day cap of 2 and bypass the per-type weekly cap (well-being shouldn't be throttled by repetition rules) — see `08_companion.md` §4 |
 
 Output: filtered, channel-routed nudge list.
 

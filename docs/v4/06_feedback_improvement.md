@@ -196,38 +196,74 @@ This closes the loop: the system validates its own fix before marking it done.
 ## 7. Diary Agent
 
 **File:** `src/modules/diaryAgent.ts`  
-**Schedule:** Nightly (after self-scoring, before archive)  
-**Cost:** One Haiku call, ~3000 tokens ≈ $0.0004/night
+**Schedule:** Weekly, Sunday 23:30 (after self-scoring, before archive)  
+**Coverage window:** The week that **ended 7 days ago** (not the week just past)  
+**Cost:** One Haiku call, ~5000 tokens ≈ $0.0007/run ≈ $0.003/month
 
-The Diary Agent generates a narrative summary of the day's activity. This serves two
-purposes:
-1. **Memory compression** — preserves the essence of the day before raw data is archived
-2. **Synthesizer context** — recent diary entries feed into the proactive Synthesizer's
-   reasoning (it reads the last 2 entries as context)
+### Why a 7-day lag instead of nightly
+
+The user backfills notes for past days — sometimes 2, 3, or 6 days late. A nightly
+diary run on day N has not yet seen the notes that will be written on days N+1
+through N+6 *about* day N. Compressing the day prematurely loses those late notes
+forever. A weekly run with a 7-day lag gives the user a full week to backfill before
+the week is sealed.
+
+### Coverage window
+
+```
+Run on Sunday 2026-04-26 at 23:30
+  → Diary covers: Mon 2026-04-13 through Sun 2026-04-19
+  → Skips: Mon 2026-04-20 through Sun 2026-04-26 (still mutable)
+```
+
+The trailing 14-day window of raw activity stays untouched and fully searchable.
+Only data older than 7 days is eligible for diary compression; only data older than
+14 days is eligible for archival.
 
 ### Input
 
-- All activity from the vector DB for the past 24h (tasks created/completed, meetings,
-  notes, decisions, interactions)
-- User objectives (for framing progress)
-- Prior diary entry (for continuity of narrative)
+- All activity from the vector DB for the **target week** (tasks created/completed,
+  meetings, notes, decisions, interactions, mood/companion observations)
+- User objectives active during that week (for framing progress)
+- Prior weekly diary entry (for continuity of narrative)
+- Sensor signals raised during the week (for thematic shape)
 
 ### Output
 
-A narrative entry stored in the `narratives` table:
+A weekly narrative entry stored in the `narratives` table:
 
 ```
-"Today you made progress on [Project X] with a focused session in the morning.
-You completed 3 tasks and added 2 new ones. A meeting with [Contact A] moved
-[Objective Y] forward. Two items remain open heading into tomorrow:
-[Task Z] and [Follow-up B]. Family time included [generic activity] in the evening."
+"During the week of Apr 13–19 you focused on [Project X], completing
+12 tasks and shipping [milestone]. [Objective Y] moved forward through a
+mid-week meeting with [Contact A]. The latter half of the week shifted
+toward [Topic B]. Two threads remained open going into the following week:
+[Task Z] and [Follow-up C]. Family time included [generic activity] mid-week
+and on the weekend."
 ```
 
 No real names. Generic activity descriptions. See CLAUDE.md privacy rules.
 
-After the diary entry is written, raw activity data older than the retention window
-(default: 90 days) is flagged for archival. Archived data is compressed and moved
-out of the active vector DB but remains restorable.
+### Narratives table change
+
+```sql
+-- v3 schema (per-day) is replaced. Migration: backfill existing rows with period_type="day"
+ALTER TABLE narratives ADD COLUMN period_type TEXT NOT NULL DEFAULT 'week';  -- "day" | "week"
+ALTER TABLE narratives ADD COLUMN period_start TEXT NOT NULL;                 -- ISO date, inclusive
+ALTER TABLE narratives ADD COLUMN period_end TEXT NOT NULL;                   -- ISO date, inclusive
+```
+
+### Archival
+
+After the weekly diary entry is written, raw activity data older than the retention
+window (default: 90 days from `period_end`) is flagged for archival. Archived data
+is compressed and moved out of the active vector DB but remains restorable.
+
+### Synthesizer context impact
+
+The Synthesizer's `recentDiaryNarrative` field now reads the **last 1–2 weekly
+narratives** instead of the last 2 nightly entries. Context is coarser-grained but
+the trailing 14 days of raw signals (sensor_signals, recent tasks/notes) remain
+fully available — the Synthesizer was never solely reliant on diaries for recency.
 
 ---
 
@@ -239,5 +275,5 @@ out of the active vector DB but remains restorable.
 | Channel B (implicit scoring) | Continuous | $0 |
 | Nightly evaluator | Nightly | ~$0.0005/night ($0.015/month) |
 | Self-test on patch approval | Per approved patch | ~$0.001/patch (amortized) |
-| Diary Agent | Nightly | ~$0.0004/night ($0.012/month) |
-| **Total** | | **~$0.03/month** |
+| Diary Agent | Weekly (7-day lag) | ~$0.0007/week ($0.003/month) |
+| **Total** | | **~$0.02/month** |

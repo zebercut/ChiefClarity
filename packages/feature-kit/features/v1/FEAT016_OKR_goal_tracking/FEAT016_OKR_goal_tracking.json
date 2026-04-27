@@ -1,0 +1,14 @@
+{
+  "id": "FEAT016",
+  "title": "OKR goal tracking with dual-measurement",
+  "category": "OKR",
+  "moscow": "MUST",
+  "priority": null,
+  "status": "Done",
+  "release": "v1",
+  "createdAt": "2026-04-03T12:00:00.000Z",
+  "updatedAt": "2026-04-26T23:16:46.157Z",
+  "tags": [],
+  "okrLink": null,
+  "type": "feature"
+}

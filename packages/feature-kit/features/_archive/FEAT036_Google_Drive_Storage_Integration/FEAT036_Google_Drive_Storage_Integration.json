@@ -1,0 +1,26 @@
+{
+  "id": "FEAT036",
+  "title": "Google Drive Storage Integration",
+  "category": "Sync & Storage",
+  "moscow": "COULD",
+  "priority": 4,
+  "status": "Planned",
+  "release": "_archive",
+  "createdAt": "2026-04-07T01:34:58.535Z",
+  "updatedAt": "2026-04-26T23:16:46.192Z",
+  "tags": [
+    "google-drive",
+    "sync",
+    "storage",
+    "mobile",
+    "oauth",
+    "backup"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

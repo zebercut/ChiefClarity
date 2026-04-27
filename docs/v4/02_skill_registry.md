@@ -43,8 +43,13 @@ malformed skills with a startup warning (non-fatal — other skills still load).
   // Structural triggers — slash commands or button events that directly activate this skill
   "structuralTriggers": ["/plan", "/prioritize"],
 
-  // Model — "haiku" for simple CRUD, "sonnet" for reasoning/planning
+  // Model — "haiku" for simple CRUD, "sonnet" for reasoning/planning.
+  // Either a string (single tier) or an object with default + deep variants
+  // selected at dispatch time via a tool arg (see modelSelector).
   "model": "sonnet",
+  // Optional: minimum tier the evaluator may propose. Prevents auto-downgrade
+  // for safety-bearing skills. Omit for normal skills.
+  "minModelTier": null,
 
   // Data access policy — references categories defined in data_schemas.json
   // Assembler enforces: skill only receives data from categories listed here
@@ -68,7 +73,27 @@ malformed skills with a startup warning (non-fatal — other skills still load).
   "autoEvaluate": true,   // false to freeze this skill from the evaluator
 
   // Token budget (tokens allocated to this skill's context blob)
-  "tokenBudget": 5000
+  "tokenBudget": 5000,
+
+  // Locked prompt zones — text inside <!-- LOCKED:<name> --> blocks in prompt.md
+  // is invisible to the Evaluator and Pattern Learner and cannot be modified
+  // via Pending Improvements. Used for safety boundaries and clinical disclaimers.
+  // Validated at boot — missing zones reject the skill.
+  "promptLockedZones": [],
+
+  // Optional UI surface contributed by this skill (vision principle #13).
+  // The app shell renders nav from the registry — adding a surface here gives
+  // the skill its own tab without editing the shell. Omit for skills that have
+  // no dedicated surface (most skills route to chat output only).
+  "surface": null
+  //  e.g. {
+  //    "id": "topics",                  // unique surface id
+  //    "label": "Topics",                // nav label
+  //    "icon": "tag",                    // icon name from app icon set
+  //    "route": "/topics",               // app route
+  //    "component": "ui/TopicsView.tsx", // React component path inside the skill folder
+  //    "order": 50                       // sort order in nav (lower = earlier)
+  //  }
 }
 ```
 
@@ -228,6 +253,8 @@ Current intents in `src/llm.ts` that become skills in v4:
 | `weekly_plan` | `weekly_planning` | sonnet | Once/week Sonnet call |
 | `research_query` | `research` | sonnet | Web + internal sources |
 | `notes_capture` | `notes` | haiku | Capture + tag |
+| (new in v4) | `companion` | haiku/sonnet split | Emotional support, mood/friction sensors, locked safety zone — see `08_companion.md` |
+| (new in v4) | `topics` | sonnet | Topic-scoped digest and queries; declares the Topics surface; works with TopicEmergence sensor and the executor auto-tag hook — see `10_topics.md` |
 
 Each migration is independent and non-breaking. Old intent code runs until the
 corresponding skill folder is added, tested, and the old branch deleted.
@@ -249,3 +276,84 @@ On app boot:
 Embedding happens once at boot per skill. Re-embedded only if manifest.json or
 description changes (mtime check). Cache stored in `src/skills/.embedding_cache.json`
 (gitignored).
+
+---
+
+## 9. Locked prompt zones
+
+Self-improvement (Channel A feedback, nightly Evaluator, Pattern Learner) can
+propose patches to a skill's `prompt.md`. Without protection, an approved patch
+could strip out safety guardrails. Locked zones prevent this.
+
+### Syntax
+
+In `prompt.md`, wrap protected text in HTML comments:
+
+```markdown
+<!-- LOCKED:safety_boundary — DO NOT EDIT. Auto-patcher must skip this block. -->
+If the user expresses signals of self-harm, harm to others, or acute crisis...
+<!-- /LOCKED -->
+```
+
+Declare the zone names in the manifest's `promptLockedZones` array.
+
+### Enforcement
+
+| Stage | Behavior |
+|---|---|
+| Boot | Loader verifies every name in `promptLockedZones` matches a `<!-- LOCKED:<name> -->` block. Mismatch → skill rejected. |
+| Evaluator / Pattern Learner | Receive the prompt with locked blocks elided (replaced by `<!-- LOCKED:<name> [REDACTED] -->`). They cannot see the text and cannot propose diffs touching it. |
+| Pending Improvements | Patches whose target line range overlaps a locked block are rejected at queue insertion time, with reason logged. |
+| Self-test on patch approval | Post-apply scan re-validates all locked zones still exist with their original content (hash compared). Drift → patch reverted, alert raised. |
+
+### Tier floor
+
+`minModelTier` similarly prevents the Evaluator from proposing model downgrades
+(`sonnet → haiku`) for safety-bearing skills.
+
+These mechanisms apply to any skill — not just `companion`. Future sensitive
+skills (e.g., medical, financial) should declare locked zones for any prompt text
+that must remain stable across self-improvement cycles.
+
+---
+
+## 10. Declarative UI surfaces
+
+Per vision principle #13, surfaces are pluggable. A skill may register one UI
+surface in its manifest (`surface` field, see §2). The skill loader collects all
+non-null surfaces at boot and exposes them to the app shell, which renders the
+navigation from the registry.
+
+### Boot-time collection
+
+```ts
+On boot, after all skills loaded:
+  surfaces = registry.getAllSkills()
+    .map(s => s.manifest.surface)
+    .filter(s => s !== null)
+    .sort((a, b) => a.order - b.order);
+  shell.registerSurfaces(surfaces);
+```
+
+### Constraints
+
+- **One surface per skill.** Skills do not register multiple surfaces. If a domain
+  needs two views (e.g., a "Topics" tab and a "Topic Insights" panel), it splits
+  into two skills or one skill + an attachment surface.
+- **Surface routes are namespaced.** The shell prefixes the route with the skill
+  id (`/topics` becomes `/skills/topics`) to prevent collision with shell-owned
+  routes (`/chat`, `/settings`, etc.).
+- **Surfaces have no privileged data access.** A surface renders against the
+  same Data Schema Registry as the skill itself — the surface uses the skill's
+  declared `dataSchemas.read` and gets the same audit log entry per read.
+
+### Core (shell-owned) vs. skill-contributed surfaces
+
+| Type | Owner | Examples |
+|---|---|---|
+| Shell-owned | App shell, fixed | Chat, Daily Focus, Settings, Pending Improvements |
+| Skill-contributed | Declared in skill manifest | Topics (from `topics` skill), Companion panel (from `companion` skill, Phase 8) |
+
+Tasks, Notes, Calendar surfaces are currently shell-owned but should migrate to
+their respective skills (`task_management`, `notes`, `calendar`) as part of the
+Phase 2 skill migration. This is tracked in `09_dev_plan.md`.

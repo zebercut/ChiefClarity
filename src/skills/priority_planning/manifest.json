@@ -1,0 +1,27 @@
+{
+  "id": "priority_planning",
+  "version": "1.0.0",
+  "description": "Help the user decide what to focus on right now. Reads tasks, calendar, and stated objectives, then returns a short ranked list with one-line reasons for each item.",
+  "triggerPhrases": [
+    "what should I focus on",
+    "what's most important right now",
+    "help me prioritize",
+    "which task matters most",
+    "what should I do today",
+    "I have too much on my plate",
+    "where should I start",
+    "rank my tasks"
+  ],
+  "structuralTriggers": ["/focus", "/prioritize"],
+  "model": "sonnet",
+  "dataSchemas": {
+    "read": ["tasks", "calendar", "objectives"],
+    "write": ["priority_log"]
+  },
+  "supportsAttachments": false,
+  "tools": ["submit_priority_ranking", "request_clarification"],
+  "autoEvaluate": true,
+  "tokenBudget": 5000,
+  "promptLockedZones": [],
+  "surface": null
+}

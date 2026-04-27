@@ -16,8 +16,9 @@ New jobs are registered in its job table. The app also runs each job on an inter
 | Signal Synthesizer | Every 4h | 08:00, 13:00, 19:00 | `src/modules/proactiveSynthesizer.ts` |
 | Live Attachment Sync | Every 1h | Hourly | `src/modules/attachments/liveSync.ts` |
 | Nightly Evaluator | — | 02:00 | `src/modules/evaluatorAgent.ts` |
-| Diary Agent | — | 23:30 | `src/modules/diaryAgent.ts` |
+| Weekly Diary Agent | — | Sunday 23:30 (covers week ending 7 days ago) | `src/modules/diaryAgent.ts` |
 | Pattern Learner | — | Sunday 03:00 | `src/modules/patternLearner.ts` |
+| Mood/Friction Sensors | 30min | Same | `src/sensors/moodSignal.ts`, `src/sensors/frictionSignal.ts` |
 | DB Backup | Every 1h | Hourly | `scripts/db-backup.js` |
 | Session Attachment Cleanup | Every 30min | — | `src/modules/attachments/attachmentStore.ts` |
 
@@ -47,10 +48,11 @@ the same job may run concurrently.
 |---|---|---|---|
 | Signal Synthesizer | ~90 runs | ~2500 | $0.018 |
 | Nightly Evaluator | ~30 runs | ~4000 | $0.015 |
-| Diary Agent | ~30 runs | ~3000 | $0.012 |
+| Weekly Diary Agent | ~4 runs | ~5000 | $0.003 |
 | Pattern Learner | ~4 runs | ~3000 | $0.004 |
+| Companion deep check-ins (Sonnet) | ~12 runs | ~3000 | $0.120 |
 | Ingestion Summarizer | Occasional | ~varies | $0.002 est. |
-| **Background total** | | | **~$0.051/month** |
+| **Background total** | | | **~$0.16/month** (was ~$0.05 before companion; companion deep check-ins dominate the new total) |
 
 ### Total monthly cost estimate
 
@@ -126,9 +128,10 @@ until the migration for that intent is complete and tested.
 - Implement `feedback` skill (Channel A — instant feedback)
 - Implement Channel B behavioral scoring
 - Implement nightly Evaluator
-- Implement Diary Agent
-- Implement Pending Improvements UI
-- Implement self-test on patch approval
+- Implement Weekly Diary Agent (7-day lag, weekly schedule)
+- Implement locked prompt zones in skill loader + Evaluator/Pattern Learner elision
+- Implement Pending Improvements UI (with locked-zone rejection at queue insertion)
+- Implement self-test on patch approval (with locked-zone post-apply scan)
 
 ### Phase 7 — Pattern Learner + remaining sensors (2 weeks)
 - Implement Pattern Learner (weekly Haiku)
@@ -136,6 +139,13 @@ until the migration for that intent is complete and tested.
   TopicDrift, EnergyPattern)
 - Add Notion live sync
 - Implement image attachment parsing (Phase 6 deferred item)
+
+### Phase 8 — Companion (2 weeks)
+- Implement `companion` skill with locked safety_boundary + non_clinical_disclaimer zones
+- Implement `mood_signal` and `friction_signal` sensors
+- Implement `safetyCheck.ts` escalation handler + `crisis_resources.json`
+- Wire Synthesizer to surface companion-typed nudges with separate per-day cap
+- Add `/checkin` and `/resume` structural triggers
 
 ---
 
@@ -163,7 +173,10 @@ until the migration for that intent is complete and tested.
 - `src/modules/diaryAgent.ts`
 - `src/modules/attachments/` (full pipeline)
 - `app/pending-improvements.tsx`
-- New DB tables: `attachment_chunks`, `nudges`, `sensor_signals`, `pending_improvements`, `narratives`
+- `src/skills/companion/` (manifest + locked-zone prompt + sensors + safety handler)
+- `src/sensors/moodSignal.ts`, `src/sensors/frictionSignal.ts`
+- `src/modules/safetyCheck.ts`, `src/config/crisis_resources.json`
+- New DB tables: `attachment_chunks`, `nudges`, `sensor_signals`, `pending_improvements`, `narratives` (with `period_type` + `period_start` + `period_end` columns for weekly diary)
 
 ---
 
@@ -226,3 +239,47 @@ Restricted data is not assembled, not passed, not present.
 **Rationale:** Post-hoc filtering (strip from output) is unreliable — the model may
 have reasoned on the restricted data even if it does not quote it. Exclusion at
 retrieval time is the only reliable privacy guarantee.
+
+### ADR-008: Diary is weekly with a 7-day lag, not nightly
+
+**Decision:** The Diary Agent runs weekly (Sunday 23:30) and summarizes the week
+that ended 7 days ago, not the week just past. Raw activity for the trailing 14
+days remains uncompressed and fully searchable.  
+**Rationale:** Users backfill notes for past days — sometimes 2, 3, or 6 days late.
+A nightly diary on day N has not yet seen the notes that will be written on days
+N+1..N+6 *about* day N. Compressing prematurely loses those late notes. A 7-day
+lag gives a full week to backfill before the week is sealed.  
+**Alternatives rejected:**
+- *Nightly diary (v3 design):* loses backfilled notes, generates 7× more LLM calls.
+- *Two-week lag:* discussed; 7 days judged sufficient for typical backfill behavior.
+  The lag is configurable if real usage shows 7 days is too short.
+
+### ADR-009: Companion is a skill + sensors, not an agent
+
+**Decision:** The Companion is implemented as a single `companion` skill plus two
+sensors (`mood_signal`, `friction_signal`) that feed the existing Synthesizer. No
+dedicated Companion agent loop.  
+**Rationale:** v3 specified Companion as a full agent with its own loop. This
+duplicated the orchestrator/synthesizer machinery without quality gain — proactive
+check-ins are just another sensor type, and interactive check-ins are just another
+skill route. Two safety extensions (locked prompt zones, `minModelTier` floor) give
+the companion the safety properties of a v3 agent within v4's plumbing.  
+**Alternatives rejected:**
+- *Standalone Companion agent (v3):* second loop, second cost center, no quality gain.
+- *Module-only (v2 regex):* cannot mirror language or hold a heavy moment; quality floor too low.
+
+### ADR-010: Locked prompt zones for safety-bearing skills
+
+**Decision:** Skill prompts may declare `<!-- LOCKED:<name> -->` blocks that are
+invisible to the Evaluator and Pattern Learner and cannot be modified via Pending
+Improvements. Skills must declare the zone names in their manifest.  
+**Rationale:** The self-improvement loop can propose prompt patches, and an
+approved patch could (accidentally or under social engineering) strip out safety
+guardrails from skills like `companion`. Locked zones make this structurally
+impossible: the auto-patcher never sees the protected text, and patches that
+overlap a locked range are rejected at queue insertion.  
+**Alternatives rejected:**
+- *Trust the human reviewer:* a tired developer might approve a "small cleanup" diff
+  that quietly drops the safety block.
+- *Re-inject safety text after every patch:* fragile, depends on the prompt staying
+  parseable. Locking at the source is simpler.

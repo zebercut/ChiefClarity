@@ -1,0 +1,24 @@
+{
+  "id": "FEAT055",
+  "title": "POC priority_planning skill (proves FEAT054+FEAT051 end-to-end)",
+  "category": "Architecture",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v2.01",
+  "createdAt": "2026-04-27T02:18:51.167Z",
+  "updatedAt": "2026-04-27T02:43:44.701Z",
+  "tags": [
+    "skill-migration",
+    "poc",
+    "priority",
+    "end-to-end"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}
