@@ -4,7 +4,7 @@ import { Slot } from "expo-router";
 import { loadConfig, saveConfig, loadPassphrase } from "../src/utils/config";
 import { setDataRoot, fileExists } from "../src/utils/filesystem";
 import { initLlmClient, getClient } from "../src/modules/llm";
-import { setRouterClient } from "../src/modules/router";
+import { setRouterClient, setV4SkillsEnabled } from "../src/modules/router";
 import { setTriageClient } from "../src/modules/triage";
 import { deriveKey, cacheKey, hasKey, setEncryptionEnabled, verifyKey, getCachedKey } from "../src/utils/crypto";
 import { getDataRoot } from "../src/utils/filesystem";
@@ -307,6 +307,11 @@ function applyConfig(c: AppConfig) {
     setRouterClient(llmClient);
     setTriageClient(llmClient);
   }
+  // FEAT055: enable v4 routing for the priority_planning POC. Other skills
+  // get added here as they migrate (FEAT080 batch 1, FEAT081 batch 2).
+  // TODO(FEAT035): replace with settings.get("v4SkillsEnabled") once the
+  // settings panel ships.
+  setV4SkillsEnabled(["priority_planning"]);
 }
 
 const styles = StyleSheet.create({

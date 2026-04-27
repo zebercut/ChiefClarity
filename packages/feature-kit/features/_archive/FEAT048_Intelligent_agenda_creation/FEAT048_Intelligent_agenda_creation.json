@@ -1,0 +1,23 @@
+{
+  "id": "FEAT048",
+  "title": "Intelligent agenda creation",
+  "category": "Planning",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Planned",
+  "release": "_archive",
+  "createdAt": "2026-04-21T05:00:00.000Z",
+  "updatedAt": "2026-04-26T23:16:46.206Z",
+  "tags": [
+    "agenda",
+    "recurring",
+    "calendar",
+    "conflicts",
+    "hygiene",
+    "planning",
+    "intelligence"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "progress": 0
+}

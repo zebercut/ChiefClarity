@@ -1,0 +1,25 @@
+{
+  "id": "FEAT053",
+  "title": "Skill Library UX - browse author edit skills",
+  "category": "UX",
+  "moscow": "SHOULD",
+  "priority": 2,
+  "status": "Planned",
+  "release": "v2.09",
+  "createdAt": "2026-04-23T10:16:30.992Z",
+  "updatedAt": "2026-04-26T23:16:46.220Z",
+  "tags": [
+    "skills",
+    "ux",
+    "settings",
+    "authoring",
+    "library"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

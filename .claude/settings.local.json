@@ -7,7 +7,11 @@
       "Write(*)",
       "Edit(*)",
       "Glob(*)",
-      "Grep(*)"
+      "Grep(*)",
+      "PowerShell(\\(Get-Item \"C:\\\\Users\\\\farzi.JAZZ\\\\Documents\\\\.lifeos\\\\lifeos.db\"\\).LastWriteTime)",
+      "PowerShell($drive = Test-Path \"G:\\\\My Drive\\\\__LO-DataV2\"; $lock = Test-Path \"G:\\\\My Drive\\\\__LO-DataV2\\\\.headless.lock\"; $node = @\\(Get-Process node -ErrorAction SilentlyContinue\\); Write-Output \"Drive mounted: $drive\"; Write-Output \"Lock file present: $lock\"; Write-Output \"Node processes: $\\($node.Count\\)\"; if \\($node.Count -gt 0\\) { $node | Select-Object Id, StartTime, @{N='CPU\\(s\\)';E={[math]::Round\\($_.CPU,1\\)}} | Format-Table -AutoSize | Out-String })",
+      "PowerShell($db = \"C:\\\\Users\\\\farzi.JAZZ\\\\Documents\\\\.lifeos\\\\lifeos.db\"; if \\(Test-Path $db\\) { Get-Item $db | Select-Object FullName, Length, LastWriteTime | Format-List | Out-String } else { \"DB not found at $db\" })",
+      "PowerShell($env_file = \"c:\\\\Users\\\\farzi.JAZZ\\\\Documents\\\\Projects\\\\__LifeOS\\\\.env\"; if \\(Test-Path $env_file\\) { $lines = Get-Content $env_file; $hasKey = $lines | Where-Object { $_ -match '^ANTHROPIC_API_KEY=' }; if \\($hasKey\\) { $val = \\($hasKey -split '=',2\\)[1].Trim\\(\\); Write-Output \"ANTHROPIC_API_KEY present, length=$\\($val.Length\\), prefix=$\\($val.Substring\\(0,[Math]::Min\\(8,$val.Length\\)\\)\\)\" } else { \"ANTHROPIC_API_KEY missing in .env\" }; $dataPath = $lines | Where-Object { $_ -match '^DATA_FOLDER_PATH=' }; Write-Output \"DATA_FOLDER_PATH line: $dataPath\"; $dbPath = $lines | Where-Object { $_ -match '^DB_PATH=' }; Write-Output \"DB_PATH line: $dbPath\" } else { \".env not found\" })"
     ]
   }
 }

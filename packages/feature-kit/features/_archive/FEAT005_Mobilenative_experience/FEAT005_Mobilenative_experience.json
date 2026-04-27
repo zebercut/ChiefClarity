@@ -1,0 +1,14 @@
+{
+  "id": "FEAT005",
+  "title": "Mobile-native experience",
+  "category": "Platform",
+  "moscow": "COULD",
+  "priority": 5,
+  "status": "Planned",
+  "release": "_archive",
+  "createdAt": "2026-04-02T14:48:40.287Z",
+  "updatedAt": "2026-04-26T23:16:46.134Z",
+  "tags": [],
+  "okrLink": null,
+  "type": "feature"
+}

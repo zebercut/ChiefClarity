@@ -1,0 +1,269 @@
+/**
+ * FEAT055 — Skill Dispatcher.
+ *
+ * Glue between the v4 Orchestrator (FEAT051), the Skill Registry (FEAT054),
+ * and the per-skill handlers. Takes a `RouteResult` and runs the routed
+ * skill end-to-end:
+ *   1. Gate on getV4SkillsEnabled() — return null if not enabled
+ *   2. Look up skill in registry — return null if missing (race)
+ *   3. Build context per skill.contextRequirements (minimal resolver)
+ *   4. Call LLM with skill prompt + tools
+ *   5. Dispatch returned tool call to skill.handlers[toolName]
+ *   6. Return SkillDispatchResult { skillId, toolCall, handlerResult, userMessage }
+ *
+ * Never throws on runtime failures. Returns null when v4 can't / shouldn't
+ * handle the phrase. Returns degraded result (with `degraded.reason`) when
+ * the LLM call fails.
+ *
+ * Per ADR-001: exactly one LLM reasoning call per phrase. The Haiku
+ * tiebreaker in FEAT051 is the only other LLM call allowed in the chain.
+ *
+ * v2.01 POC scope:
+ *   - Minimal context resolver (5 supported keys)
+ *   - Console-log persistence only — handler writes ship with FEAT080
+ *   - chat.tsx wiring deferred to FEAT080 batch 1; FEAT055 proves the
+ *     contract via skillDispatcher.test.ts
+ */
+
+import Anthropic from "@anthropic-ai/sdk";
+import { MODEL_HEAVY, MODEL_LIGHT, isCircuitOpen, getClient } from "./llm";
+import { loadSkillRegistry } from "./skillRegistry";
+import { getV4SkillsEnabled } from "./router";
+import type {
+  RouteResult,
+  SkillDispatchResult,
+} from "../types/orchestrator";
+import type {
+  ContextRequirements,
+  LoadedSkill,
+  SkillRegistryAPI,
+  ToolHandler,
+} from "../types/skills";
+
+// ─── Public API ────────────────────────────────────────────────────────────
+
+export interface DispatchOptions {
+  /** Tests inject a stub LLM client to avoid live API calls. */
+  llmClient?: Anthropic;
+  /** Tests inject a fixture registry to bypass the global singleton. */
+  registry?: SkillRegistryAPI;
+  /** Tests pass a fixture state for the context resolver to read from. */
+  state?: unknown;
+  /**
+   * Tests can pre-set the v4-enabled set. If not provided, dispatcher reads
+   * the live set via getV4SkillsEnabled().
+   */
+  enabledSkillIds?: ReadonlySet<string>;
+}
+
+/**
+ * Execute a routed skill end-to-end. Returns null when the v4 path can't or
+ * shouldn't run for this skill — caller falls back to legacy.
+ */
+export async function dispatchSkill(
+  routeResult: RouteResult,
+  phrase: string,
+  options: DispatchOptions = {}
+): Promise<SkillDispatchResult | null> {
+  // 1. Gate — only handle skills that are v4-enabled
+  const enabled = options.enabledSkillIds ?? getV4SkillsEnabled();
+  if (!enabled.has(routeResult.skillId)) {
+    return null;
+  }
+
+  // 2. Look up skill
+  const registry = options.registry ?? (await loadSkillRegistry());
+  const skill = registry.getSkill(routeResult.skillId);
+  if (!skill) {
+    console.warn(
+      `[skillDispatcher] route picked "${routeResult.skillId}" but registry has no such skill — caller falls back`
+    );
+    return null;
+  }
+
+  // 3. Build context
+  const context = resolveContext(skill.contextRequirements, options.state);
+
+  // 4. LLM call
+  const llm = options.llmClient ?? getClient();
+  if (!llm) {
+    return degradedAndLog(skill, phrase, "no LLM client initialized");
+  }
+  if (isCircuitOpen()) {
+    return degradedAndLog(skill, phrase, "llm circuit breaker open");
+  }
+
+  const model = pickModel(skill);
+
+  let llmResponse;
+  try {
+    llmResponse = await llm.messages.create({
+      model,
+      max_tokens: skill.manifest.tokenBudget,
+      system: skill.prompt,
+      messages: [
+        {
+          role: "user",
+          content: buildUserMessage(phrase, context),
+        },
+      ],
+      tools: buildToolSchemas(skill),
+      tool_choice: { type: "any" },
+    });
+  } catch (err: any) {
+    return degradedAndLog(skill, phrase, `llm call failed: ${err?.message ?? err}`);
+  }
+
+  // 5. Find tool call
+  const toolBlock = llmResponse.content.find((b) => b.type === "tool_use");
+  if (!toolBlock || toolBlock.type !== "tool_use") {
+    return degradedAndLog(skill, phrase, "llm returned no tool call");
+  }
+  const toolName = toolBlock.name;
+  const toolArgs = (toolBlock.input as Record<string, unknown>) ?? {};
+
+  // 6. Dispatch to handler
+  const handler: ToolHandler | undefined = skill.handlers[toolName];
+  if (!handler) {
+    return degradedAndLog(skill, phrase, `llm picked tool "${toolName}" but skill has no matching handler`);
+  }
+
+  let handlerResult: any;
+  try {
+    handlerResult = await handler(toolArgs, { phrase, skillId: skill.manifest.id });
+  } catch (err: any) {
+    return degradedAndLog(skill, phrase, `handler "${toolName}" threw: ${err?.message ?? err}`);
+  }
+
+  const result: SkillDispatchResult = {
+    skillId: skill.manifest.id,
+    toolCall: { name: toolName, args: toolArgs },
+    handlerResult,
+    userMessage: typeof handlerResult?.userMessage === "string"
+      ? handlerResult.userMessage
+      : "(no message)",
+    clarificationRequired: Boolean(handlerResult?.clarificationRequired),
+  };
+  logDispatchDecision(phrase, result);
+  return result;
+}
+
+/**
+ * Structured log per dispatch outcome (per AGENTS.md rule CR-FEAT051).
+ * Phrase hashed (sha256, first 16 hex chars). Same format the router uses
+ * so log entries can be correlated. Cross-references the audit_log
+ * convention that ships with FEAT056 in Phase 3.
+ */
+function logDispatchDecision(phrase: string, result: SkillDispatchResult): void {
+  const phraseHash = sha256First16(phrase);
+  console.log(
+    `[skillDispatcher] dispatch phrase=${phraseHash} skill=${result.skillId} ` +
+    `tool=${result.toolCall.name}` +
+    (result.clarificationRequired ? " clarification=yes" : "") +
+    (result.degraded ? ` degraded="${result.degraded.reason}"` : "")
+  );
+}
+
+function sha256First16(s: string): string {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const crypto = require("crypto") as typeof import("crypto");
+  return crypto.createHash("sha256").update(s, "utf8").digest("hex").slice(0, 16);
+}
+
+// ─── Context resolver (minimal v2.01 version) ──────────────────────────────
+//
+// Maps a skill.contextRequirements declaration to actual context data. The
+// full Assembler with policy filter ships in Phase 3 (FEAT055/Schema Registry).
+// Until then, this resolver supports a small fixed set of keys; unknown keys
+// are skipped with a warning.
+
+const SUPPORTED_KEYS = new Set([
+  "userProfile",
+  "objectives",
+  "recentTasks",
+  "calendarToday",
+  "calendarNextSevenDays",
+]);
+
+function resolveContext(
+  requirements: ContextRequirements,
+  state: unknown
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  if (!state || typeof state !== "object") {
+    // No state passed → return empty context. Skill prompt should handle
+    // this gracefully (request_clarification).
+    return result;
+  }
+  const s = state as Record<string, unknown>;
+
+  for (const [key, declared] of Object.entries(requirements)) {
+    if (!SUPPORTED_KEYS.has(key)) {
+      console.warn(
+        `[skillDispatcher] context requirement "${key}" not supported by minimal resolver — ` +
+        `skipping. Full Assembler ships in Phase 3.`
+      );
+      continue;
+    }
+    if (declared === false || declared == null) continue;
+
+    // For v2.01 the resolver does a flat lookup against `state`. State shape
+    // assumed to mirror the requirement key names. Tests inject a fixture
+    // state that matches.
+    if (key in s) {
+      result[key] = s[key];
+    }
+  }
+  return result;
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
+
+function pickModel(skill: LoadedSkill): string {
+  const m = skill.manifest.model;
+  if (typeof m === "string") {
+    return m === "sonnet" ? MODEL_HEAVY : MODEL_LIGHT;
+  }
+  // Object form — for v2.01 we always pick `default`. The `deep` variant
+  // selection via tool-arg is FEAT072 (Companion) territory.
+  return m.default === "sonnet" ? MODEL_HEAVY : MODEL_LIGHT;
+}
+
+function buildUserMessage(phrase: string, context: Record<string, unknown>): string {
+  const ctxStr = Object.keys(context).length
+    ? `\n\nContext:\n${JSON.stringify(context, null, 2)}`
+    : "";
+  return `User said: "${phrase}"${ctxStr}`;
+}
+
+function buildToolSchemas(skill: LoadedSkill) {
+  // Minimal tool schemas — for v2.01 the dispatcher exposes each declared
+  // tool with a permissive input_schema (object with no required props).
+  // Each skill's prompt names the args it expects; the LLM follows the
+  // prompt rather than relying on the schema. The full schema-per-tool
+  // model lands when we have a tool registry (FEAT080).
+  return skill.manifest.tools.map((toolName) => ({
+    name: toolName,
+    description: `Tool exported by ${skill.manifest.id} skill.`,
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      additionalProperties: true,
+    },
+  }));
+}
+
+function degradedAndLog(skill: LoadedSkill, phrase: string, reason: string): SkillDispatchResult {
+  console.warn(`[skillDispatcher] ${skill.manifest.id} degraded: ${reason}`);
+  const result: SkillDispatchResult = {
+    skillId: skill.manifest.id,
+    toolCall: { name: "<degraded>", args: {} },
+    handlerResult: null,
+    userMessage:
+      "I couldn't complete that with the v4 path right now — falling back. " +
+      `(reason: ${reason})`,
+    degraded: { reason },
+  };
+  logDispatchDecision(phrase, result);
+  return result;
+}

@@ -1,0 +1,51 @@
+---
+description: LifeOS project rules — privacy, architecture, output style. Single source of truth is CLAUDE.md at the repo root.
+globs:
+alwaysApply: true
+---
+
+# LifeOS — Project Rules for Cursor
+
+The authoritative rules for this project live in [CLAUDE.md](mdc:CLAUDE.md) at the repo root. Read it before generating, editing, or reviewing code. The summary below is a pointer, not a replacement.
+
+## Critical rules (do not violate)
+
+### 1. No real user data in any committed file
+Never include real names, company names, school names, activities, dates, email addresses, or task descriptions from the user's life in any file that is committed. Applies universally: source, prompts, docs, feature specs, review docs, test fixtures, comments. Use placeholders like `[USER]`, `Task A`, `Project X`, `Child A`, `Example Corp`. Full list of forbidden/allowed examples is in [CLAUDE.md](mdc:CLAUDE.md).
+
+### 2. One-time scripts stay in `scripts/scratch/`
+Data fixes, debug dumps, and migration patches go in `scripts/scratch/` (gitignored) and are never committed. They are the #1 source of personal-data leaks. Only permanent infrastructure scripts belong in `scripts/`.
+
+### 3. Architecture boundaries are sacred
+- TypeScript owns: routing, state, file I/O, conflict detection, writes, summarizing, token budgets.
+- LLM owns: language understanding, judgment, suggestions, natural-language reply.
+- One LLM call per user phrase. No multi-agent pipelines.
+- LLM always returns JSON via tool use (`submit_action_plan`); TypeScript executes the plan.
+- Per-intent context only — do not send all files to all intents. Every intent has a token budget.
+- File writes go through `filesystem.ts` (temp-file-then-rename).
+- Use `state.userProfile.timezone` for date operations, not system locale.
+
+### 4. App runs continuously
+The app is opened once and stays running for days. Never design features that only trigger on app load, startup, or mount. Every periodic check uses `setInterval` and respects `loadingRef` / `inboxProcessingRef` guards.
+
+## Required updates when changing code
+
+When adding functionality, changing architecture, or adding data files / intents / modules, update:
+- `docs/new_architecture_typescript.md` — single source of truth for architecture.
+- `README.md` — features, scripts, data files, modules, project tree.
+- `packages/feature-kit/features/` — feature backlog via the feature-kit CLI (provide category, moscow, priority, release, tags; move status through the pipeline: Planned → Design Reviewed → In Progress → Code Reviewed → Testing → Done).
+
+## Output style
+
+- User-facing messages: plain, non-technical language. No file names, JSON keys, or system jargon.
+- Focus on outcomes ("Your plan is ready"), not actions ("Wrote focus_brief.json").
+- Chat reply for planning intents: 1–2 sentences max; details go in the Focus Brief.
+
+## Learned patterns (from prior reviews)
+
+- Haiku→Sonnet fallback is gated by `SONNET_FALLBACK_INTENTS`. Simple CRUD intents fail gracefully, don't escalate.
+- Injected LLM functions (`injectRefreshLlm`) bypass the `llm.ts` circuit breaker — callers must check `isCircuitOpen()` first.
+- When wiring a module into the UI, check whether the headless runner also needs it. It is the biggest cost center.
+- One Sonnet call per day (morning plan). Evening + light checks use Tier 2 Haiku refresh. Weekly plan is the only other Sonnet call.
+- `lifeos.db` lives on a local path (`DB_PATH`), not on Google Drive. Hourly backup copies it to the cloud folder.
+- When adding fields to `Task`, update: `types/index.ts`, `db/queries/tasks.ts` (rowToTask + insertTask + updateTask), `executor.ts` (defaults), `recurringProcessor.ts`, and test fixtures.

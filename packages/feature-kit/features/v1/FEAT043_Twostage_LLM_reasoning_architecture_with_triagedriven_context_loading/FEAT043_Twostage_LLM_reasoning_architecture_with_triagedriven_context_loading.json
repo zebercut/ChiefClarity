@@ -1,0 +1,26 @@
+{
+  "id": "FEAT043",
+  "title": "Two-stage LLM reasoning architecture with triage-driven context loading",
+  "category": "Architecture",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Code Reviewed",
+  "release": "v1",
+  "createdAt": "2026-04-09T18:44:41.310Z",
+  "updatedAt": "2026-04-26T23:16:46.208Z",
+  "tags": [
+    "llm",
+    "reasoning",
+    "triage",
+    "architecture",
+    "sonnet",
+    "haiku"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

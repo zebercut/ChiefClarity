@@ -1,29 +1,7 @@
 {
-  "generatedAt": "2026-04-15T09:02:58.058Z",
-  "count": 44,
+  "generatedAt": "2026-04-27T02:43:46.865Z",
+  "count": 39,
   "features": [
-    {
-      "id": "FEAT001",
-      "title": "Task management dashboard",
-      "category": "Tasks",
-      "moscow": "MUST",
-      "priority": 1,
-      "status": "Planned",
-      "release": "POST-MVP",
-      "tags": [],
-      "type": "feature"
-    },
-    {
-      "id": "FEAT002",
-      "title": "Calendar experience",
-      "category": "Calendar",
-      "moscow": "MUST",
-      "priority": 1,
-      "status": "Planned",
-      "release": "POST-MVP",
-      "tags": [],
-      "type": "feature"
-    },
     {
       "id": "FEAT021",
       "title": "Data encryption at rest for sensitive JSON files",
@@ -31,7 +9,7 @@
       "moscow": "MUST",
       "priority": 1,
       "status": "Done",
-      "release": "MVP",
+      "release": "v1",
       "tags": [
         "security",
         "privacy",
@@ -48,7 +26,7 @@
       "moscow": "MUST",
       "priority": 1,
       "status": "Done",
-      "release": "v2.1",
+      "release": "v1",
       "tags": [
         "tasks",
         "ui",
@@ -102,7 +80,7 @@
       "moscow": "MUST",
       "priority": 1,
       "status": "Planned",
-      "release": "v2.3",
+      "release": "v2.02",
       "tags": [
         "objectives",
         "planning",
@@ -120,7 +98,7 @@
       "moscow": "MUST",
       "priority": 1,
       "status": "Done",
-      "release": "v4.0",
+      "release": "v1",
       "tags": [
         "database",
         "libsql",
@@ -140,7 +118,7 @@
       "moscow": "MUST",
       "priority": 1,
       "status": "Done",
-      "release": "v4.0",
+      "release": "v1",
       "tags": [
         "embeddings",
         "semantic-search",
@@ -160,7 +138,7 @@
       "moscow": "MUST",
       "priority": 1,
       "status": "Code Reviewed",
-      "release": "v4.0",
+      "release": "v1",
       "tags": [
         "llm",
         "reasoning",
@@ -179,7 +157,7 @@
       "moscow": "MUST",
       "priority": 1,
       "status": "Code Reviewed",
-      "release": "v4.0",
+      "release": "v1",
       "tags": [
         "brief",
         "reactive",
@@ -198,7 +176,7 @@
       "moscow": "MUST",
       "priority": 1,
       "status": "Code Reviewed",
-      "release": "v4.0",
+      "release": "v1",
       "tags": [
         "ux",
         "brief",
@@ -218,7 +196,7 @@
       "moscow": "MUST",
       "priority": 1,
       "status": "Done",
-      "release": "v4.0",
+      "release": "v1",
       "tags": [
         "hygiene",
         "data-quality",
@@ -230,26 +208,92 @@
       "complexity": null
     },
     {
-      "id": "FEAT003",
-      "title": "Resilient multi-modal input",
-      "category": "Chat",
+      "id": "FEAT050",
+      "title": "Skill Runtime - declarative skills as data",
+      "category": "Architecture",
       "moscow": "MUST",
-      "priority": 2,
-      "status": "Planned",
-      "release": "POST-MVP",
-      "tags": [],
-      "type": "feature"
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.01",
+      "tags": [
+        "skills",
+        "runtime",
+        "architecture",
+        "extensibility",
+        "composition"
+      ],
+      "type": "feature",
+      "complexity": null
     },
     {
-      "id": "FEAT017",
-      "title": "One-liner open source setup (npx create-chief-clarity)",
-      "category": "Platform",
-      "moscow": "SHOULD",
-      "priority": 2,
+      "id": "FEAT051",
+      "title": "Skill Router and Composer",
+      "category": "LLM Pipeline",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.01",
+      "tags": [
+        "router",
+        "triage",
+        "composer",
+        "skill-gap",
+        "meta-llm"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT052",
+      "title": "Context Cache with Generation Tokens",
+      "category": "Performance",
+      "moscow": "MUST",
+      "priority": 1,
       "status": "Planned",
-      "release": "POST-MVP",
-      "tags": [],
-      "type": "feature"
+      "release": "v2.02",
+      "tags": [
+        "cache",
+        "performance",
+        "generation-tokens",
+        "data-freshness"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT054",
+      "title": "Skill folder loader and validator",
+      "category": "Architecture",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.01",
+      "tags": [
+        "skills",
+        "registry",
+        "loader",
+        "validator",
+        "surfaces"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT055",
+      "title": "POC priority_planning skill (proves FEAT054+FEAT051 end-to-end)",
+      "category": "Architecture",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.01",
+      "tags": [
+        "skill-migration",
+        "poc",
+        "priority",
+        "end-to-end"
+      ],
+      "type": "feature",
+      "complexity": null
     },
     {
       "id": "FEAT018",
@@ -258,7 +302,7 @@
       "moscow": "SHOULD",
       "priority": 2,
       "status": "Code Reviewed",
-      "release": "v4.1",
+      "release": "v1",
       "tags": [
         "google-calendar",
         "integration",
@@ -275,7 +319,7 @@
       "moscow": "SHOULD",
       "priority": 2,
       "status": "Planned",
-      "release": "POST-MVP",
+      "release": "v2.02",
       "tags": [],
       "type": "feature"
     },
@@ -286,7 +330,7 @@
       "moscow": "MUST",
       "priority": 2,
       "status": "Design Reviewed",
-      "release": "v2.1",
+      "release": "v2.02",
       "tags": [
         "topics",
         "knowledge",
@@ -301,7 +345,7 @@
       "moscow": "MUST",
       "priority": 2,
       "status": "Planned",
-      "release": "v2.1",
+      "release": "v2-security",
       "tags": [
         "auth",
         "security",
@@ -335,7 +379,7 @@
       "moscow": "MUST",
       "priority": 2,
       "status": "Planned",
-      "release": "v2.3",
+      "release": "v2.02",
       "tags": [
         "calendar",
         "conflict",
@@ -353,7 +397,7 @@
       "moscow": "MUST",
       "priority": 2,
       "status": "Planned",
-      "release": "v4.1",
+      "release": "v2.04-mobile",
       "tags": [
         "capacitor",
         "mobile",
@@ -365,26 +409,40 @@
       "complexity": null
     },
     {
-      "id": "FEAT004",
-      "title": "Smart recurring suggestions",
-      "category": "Proactive",
-      "moscow": "SHOULD",
-      "priority": 3,
+      "id": "FEAT049",
+      "title": "Weekly retrospective with leverage and adherence scoring",
+      "category": "Focus Planning",
+      "moscow": "MUST",
+      "priority": 2,
       "status": "Planned",
-      "release": "POST-MVP",
-      "tags": [],
-      "type": "feature"
+      "release": "v2.02",
+      "tags": [
+        "retro",
+        "planning",
+        "weekly-review",
+        "leverage",
+        "adherence"
+      ],
+      "type": "feature",
+      "complexity": null
     },
     {
-      "id": "FEAT006",
-      "title": "Data portability & integrations ",
-      "category": "Integrations",
+      "id": "FEAT053",
+      "title": "Skill Library UX - browse author edit skills",
+      "category": "UX",
       "moscow": "SHOULD",
-      "priority": 3,
+      "priority": 2,
       "status": "Planned",
-      "release": "POST-MVP",
-      "tags": [],
-      "type": "feature"
+      "release": "v2.09",
+      "tags": [
+        "skills",
+        "ux",
+        "settings",
+        "authoring",
+        "library"
+      ],
+      "type": "feature",
+      "complexity": null
     },
     {
       "id": "FEAT022",
@@ -393,7 +451,7 @@
       "moscow": "SHOULD",
       "priority": 3,
       "status": "Done",
-      "release": "MVP",
+      "release": "v1",
       "tags": [
         "llm",
         "cost",
@@ -408,7 +466,7 @@
       "moscow": "SHOULD",
       "priority": 3,
       "status": "Planned",
-      "release": "v2.2",
+      "release": "v2.05",
       "tags": [
         "topics",
         "knowledge",
@@ -423,7 +481,7 @@
       "moscow": "MUST",
       "priority": 3,
       "status": "Planned",
-      "release": "v2.2",
+      "release": "v2.03",
       "tags": [
         "settings",
         "configuration",
@@ -433,102 +491,6 @@
       ],
       "type": "feature",
       "complexity": null
-    },
-    {
-      "id": "FEAT019",
-      "title": "Message queue & chat pipeline",
-      "category": "Chat",
-      "moscow": "MUST",
-      "priority": 4,
-      "status": "Planned",
-      "release": "v2.1",
-      "tags": [
-        "ux",
-        "chat",
-        "queue"
-      ],
-      "type": "feature"
-    },
-    {
-      "id": "FEAT032",
-      "title": "Tasks tab learning loop for adaptive priority weights",
-      "category": "Tasks",
-      "moscow": "COULD",
-      "priority": 4,
-      "status": "Planned",
-      "release": "v2.4",
-      "tags": [
-        "tasks",
-        "ui",
-        "learning",
-        "hitl",
-        "tasks-tab"
-      ],
-      "type": "feature",
-      "complexity": null
-    },
-    {
-      "id": "FEAT034",
-      "title": "Data Export (Tasks, Events, Notes, Topics)",
-      "category": "Data Management",
-      "moscow": "SHOULD",
-      "priority": 4,
-      "status": "Planned",
-      "release": "v2.2",
-      "tags": [
-        "export",
-        "backup",
-        "data",
-        "portability"
-      ],
-      "type": "feature",
-      "complexity": null
-    },
-    {
-      "id": "FEAT036",
-      "title": "Google Drive Storage Integration",
-      "category": "Sync & Storage",
-      "moscow": "COULD",
-      "priority": 4,
-      "status": "Planned",
-      "release": "v2.3",
-      "tags": [
-        "google-drive",
-        "sync",
-        "storage",
-        "mobile",
-        "oauth",
-        "backup"
-      ],
-      "type": "feature",
-      "complexity": null
-    },
-    {
-      "id": "FEAT005",
-      "title": "Mobile-native experience",
-      "category": "Platform",
-      "moscow": "COULD",
-      "priority": 5,
-      "status": "Planned",
-      "release": "POST-MVP",
-      "tags": [],
-      "type": "feature"
-    },
-    {
-      "id": "FEAT025",
-      "title": "Multi-LLM provider support with setup and settings UI",
-      "category": "Infrastructure",
-      "moscow": "COULD",
-      "priority": 5,
-      "status": "Planned",
-      "release": "POST-MVP",
-      "tags": [
-        "llm",
-        "multi-provider",
-        "settings",
-        "openai"
-      ],
-      "type": "feature"
     },
     {
       "id": "FEAT026",
@@ -554,7 +516,7 @@
       "moscow": "MUST",
       "priority": null,
       "status": "Done",
-      "release": "MVP",
+      "release": "v1",
       "tags": [],
       "type": "feature"
     },
@@ -565,7 +527,7 @@
       "moscow": "MUST",
       "priority": null,
       "status": "Done",
-      "release": "MVP",
+      "release": "v1",
       "tags": [],
       "type": "feature"
     },
@@ -576,7 +538,7 @@
       "moscow": "MUST",
       "priority": null,
       "status": "Done",
-      "release": "MVP",
+      "release": "v1",
       "tags": [],
       "type": "feature"
     },
@@ -587,7 +549,7 @@
       "moscow": "MUST",
       "priority": null,
       "status": "Done",
-      "release": "MVP",
+      "release": "v1",
       "tags": [],
       "type": "feature"
     },
@@ -598,7 +560,7 @@
       "moscow": "MUST",
       "priority": null,
       "status": "Done",
-      "release": "MVP",
+      "release": "v1",
       "tags": [],
       "type": "feature"
     },
@@ -609,7 +571,7 @@
       "moscow": "MUST",
       "priority": null,
       "status": "Done",
-      "release": "MVP",
+      "release": "v1",
       "tags": [],
       "type": "feature"
     },
@@ -620,7 +582,7 @@
       "moscow": "MUST",
       "priority": null,
       "status": "Done",
-      "release": "MVP",
+      "release": "v1",
       "tags": [],
       "type": "feature"
     },
@@ -631,7 +593,7 @@
       "moscow": "SHOULD",
       "priority": null,
       "status": "Done",
-      "release": "MVP",
+      "release": "v1",
       "tags": [],
       "type": "feature"
     },
@@ -653,7 +615,7 @@
       "moscow": "MUST",
       "priority": null,
       "status": "Done",
-      "release": "MVP",
+      "release": "v1",
       "tags": [],
       "type": "feature"
     }

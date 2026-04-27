@@ -1,0 +1,27 @@
+{
+  "id": "FEAT042",
+  "title": "Semantic retrieval layer with embedding indexer cross link auto population and assembler relevance pre filtering",
+  "category": "LLM Pipeline",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v1",
+  "createdAt": "2026-04-08T18:25:36.364Z",
+  "updatedAt": "2026-04-26T23:16:46.204Z",
+  "tags": [
+    "embeddings",
+    "semantic-search",
+    "vector-index",
+    "retrieval",
+    "rag",
+    "libsql",
+    "assembler"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

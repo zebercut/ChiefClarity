@@ -1,0 +1,25 @@
+{
+  "id": "FEAT047",
+  "title": "Data hygiene with LLM-assisted cleanup",
+  "category": "Data Quality",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v1",
+  "createdAt": "2026-04-14T00:00:00.000Z",
+  "updatedAt": "2026-04-26T23:16:46.227Z",
+  "tags": [
+    "hygiene",
+    "data-quality",
+    "dedup",
+    "cleanup",
+    "automation"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

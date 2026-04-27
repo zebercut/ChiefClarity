@@ -1,0 +1,42 @@
+# Keep Cursor's indexer and AI away from anything containing real user data
+# or secrets. Mirrors the privacy-critical entries in .gitignore.
+
+# Real user data (lives on cloud storage, never indexed)
+data/
+data_backup/
+data-restored/
+decrypted-dump/
+.migration-staging/
+
+# Secrets
+.env
+config.json
+
+# Databases (may contain real tasks/events/names)
+*.db
+
+# One-time / throwaway scripts (often hardcoded to real data)
+scripts/scratch/
+
+# Build output and dependencies (large, low signal)
+node_modules/
+dist/
+.expo/
+
+# Native build artifacts
+android/
+ios/
+
+# Python legacy/migration
+__pycache__/
+venv/
+*.egg-info/
+
+# OS / signing artifacts
+.DS_Store
+Thumbs.db
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision

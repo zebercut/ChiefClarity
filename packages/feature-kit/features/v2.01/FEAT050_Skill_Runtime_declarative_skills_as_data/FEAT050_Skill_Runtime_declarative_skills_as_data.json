@@ -1,0 +1,25 @@
+{
+  "id": "FEAT050",
+  "title": "Skill Runtime - declarative skills as data",
+  "category": "Architecture",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v2.01",
+  "createdAt": "2026-04-23T10:16:19.384Z",
+  "updatedAt": "2026-04-27T02:43:46.835Z",
+  "tags": [
+    "skills",
+    "runtime",
+    "architecture",
+    "extensibility",
+    "composition"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

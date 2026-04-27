@@ -1,0 +1,25 @@
+{
+  "id": "FEAT054",
+  "title": "Skill folder loader and validator",
+  "category": "Architecture",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v2.01",
+  "createdAt": "2026-04-27T00:01:53.255Z",
+  "updatedAt": "2026-04-27T00:43:48.654Z",
+  "tags": [
+    "skills",
+    "registry",
+    "loader",
+    "validator",
+    "surfaces"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

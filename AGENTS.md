@@ -38,3 +38,32 @@ Coder-specific rules that govern day-to-day implementation style also live in `C
 
 ### Testing
 - (Rules will be added here after first test cycle)
+- Every sensor unit test must include the empty-database case — sensor returns zero signals when there is nothing to detect. (DR v2 portfolio §7)
+- Every skill PR records a fixture for the LLM output of each acceptance criterion. CI runs against fixtures (deterministic); a nightly job re-runs against live LLM. (DR v2 portfolio §7)
+- Negative privacy tests are mandatory in Phase 3+. For every new skill, add a test that proves it cannot read a sensitive category not in its manifest. (DR v2 portfolio §7)
+- Dual-path divergence tests required for every legacy-intent → v4-skill migration. Legacy code cannot be deleted until divergence is < 5% on a 50-phrase labeled set. (DR v2 portfolio §7)
+
+### Architecture (v4 portfolio)
+- Skills are folders, not flat data. Manifest + prompt + context + handlers per `docs/v4/02_skill_registry.md`. PR review rejects flat-file skill specs. (DR v2 portfolio §7)
+- One LLM reasoning call per user phrase. ADR-001 is binding. Any feature that introduces a second reasoning call within one phrase needs an ADR override before merge. (DR v2 portfolio §7)
+- No on-the-fly skill composition. A skill that doesn't fit either: (a) routes to `general_assistant`, or (b) prompts the user to author one via FEAT053 — never silently composed. (DR v2 portfolio §7, supersedes FEAT051 v3 composer)
+- Capabilities are integrations, skills are domain expertise. Don't merge them. `src/integrations/` is for external systems (Google, Slack); `src/skills/` is for LLM-facing behaviors. (DR v2 portfolio §1, supersedes FEAT020 hook model)
+- Privacy filter is upstream. Every new skill PR includes its `dataSchemas.read/write` declaration; PRs without are rejected. Restricted data is excluded at retrieval, not stripped from output. (DR v2 portfolio §7)
+- Locked prompt zones for any safety-bearing skill. Companion is the first; future medical/financial/legal skills follow the same pattern with explicit `promptLockedZones` in the manifest. (DR v2 portfolio §7)
+- Sensors emit signals, never call the LLM, never notify the user directly. Pluggable folder pattern per `docs/v4/05_proactive_intelligence.md §1`. (DR v2 portfolio §7)
+- One migration per PR. No PR ships two new data tables or file additions simultaneously. (DR v2 portfolio §7)
+
+### Coding (v4 portfolio)
+- Skill handlers must write through `filesystem.ts`, never direct disk writes. (DR v2 portfolio §7)
+- Executor writes go through the topic auto-tag hook (FEAT084) once Phase 2 ships. Skill handlers do not call `topicManager.recordSignal` directly. (DR v2 portfolio §7)
+- No `process.env` reads outside `src/config/settings.ts` (after FEAT035 ships). Every other module reads through `settings.get()` for live-update support. (DR v2 portfolio §7)
+- Skill `handlers.ts` files must do NO work at module-load time (no top-level await, no factory-instantiation, no I/O). Every skill `handlers.ts` is dynamic-imported sequentially during boot; heavy module-load work blocks the entire skill registry boot. Define handlers as plain function exports; defer setup to first invocation. (CR-FEAT054)
+- When a per-boot derived cache (e.g. embedding cache, computed-state snapshot) keys entries by an external identifier that can disappear (skill folder deleted, file removed), rebuild the cache from scratch each boot rather than starting from the previous on-disk cache and adding to it. Otherwise removed-id entries linger forever, causing slow disk growth and stale-data bugs when an id is reused. (CR-FEAT054: B1 — `skillRegistry.ts` cache file accumulated entries for deleted skills.)
+
+### Architecture (v4 portfolio cont.)
+- Skill manifests can declare a `surface` (UI tab). Routes must be validated against (a) a regex that prevents path traversal / scheme injection (`/^(?:\/[a-z0-9_-]+)+\/?$/`), and (b) a reserved-route list of shell-owned paths. Both checks at load time, not at render time. (CR-FEAT054: B2)
+- When two pluggable contributors (skills, sensors, capabilities) can collide on a uniqueness constraint (id, route, port, etc.), the loader must detect the collision deterministically and reject one with a named warning. Alphabetical-first-wins is the agreed tiebreak for skill folders. (CR-FEAT054: B4)
+- Routing / orchestration code must log every decision with a structured entry that includes a SHA-256-hashed form of the user phrase (first 16 hex chars), the chosen skill id, confidence, routing method, and the candidates considered. Hash format must match the audit_log convention (FEAT056) so log entries can be cross-referenced. Never log plaintext user phrases. (CR-FEAT051: B3)
+- Any module imported (directly or transitively) from `app/` must NOT have top-level `import * as fs from "fs"` (or `path`, `crypto`, `child_process`, `os`). The Metro bundler builds these into the web/Capacitor bundle and fails to resolve them. Follow the `src/utils/filesystem.ts` pattern: declare `function nodeFs() { return require("fs"); }` at module top and call it inside functions that are gated by `isNode()`. Type-only imports (`import type ... from "fs"`) are fine. (CR-FEAT055: B2)
+- Dynamic `import(<runtime-computed-path>)` is rejected by Metro's transform-worker (e.g., `import(path.resolve(file))`). When a Node-only module needs to dynamically load a file by computed path, use `const dynRequire: NodeRequire = eval("require"); dynRequire(absolutePath);` to hide the call from Metro's static analyzer. Works only in Node — must be gated by `isNode()`. (CR-FEAT055: B3)
+- Verify any v4 module imported from `app/` builds via `npm run build:web` before marking a feature Done. The test suite runs in Node where everything works; only Metro catches bundle-time resolution failures. (CR-FEAT055)
