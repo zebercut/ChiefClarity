@@ -575,17 +575,11 @@ async function run(): Promise<void> {
     // applyWrites mutates the fixture. (The timer path via processBundle
     // intentionally does NOT pass state; it owns its own write loop. That
     // path is unaffected by this fix.)
-    //
-    // Note: the executor's applyAdd array-loop covers tasks/calendar/
-    // recurringTasks/contextMemory but not "notes" — so we assert the
-    // tasks and calendar collections grew (proving applyWrites ran with
-    // forwarded state) and use `_loadedCounts` as the post-flush signal
-    // for the notes write. Adding "notes" to the executor's array-loop
-    // is a separate latent fix outside FEAT061's scope.
     const reg = await loadProductionRegistry();
     const state = makeFixtureState();
     assert.strictEqual(state.tasks.tasks.length, 0, "precondition: tasks empty");
     assert.strictEqual(state.calendar.events.length, 0, "precondition: calendar empty");
+    assert.strictEqual(state.notes.notes.length, 0, "precondition: notes empty");
     const result = await dispatchSkill(
       makeRoute("inbox_triage"),
       "Task A by Friday. Meeting Tue 3pm. Idea: Project X kickoff doc.",
@@ -606,10 +600,11 @@ async function run(): Promise<void> {
     assert.ok(result, "dispatch should not return null");
     assert.strictEqual(result!.skillId, "inbox_triage");
     // Load-bearing assertions: applyWrites ran via the dispatcher path
-    // (tasks + calendar collections grew, and flush ran for notes).
+    // (each collection grew by exactly one).
     assert.strictEqual(state.tasks.tasks.length, 1, "task should be appended via applyWrites");
     assert.strictEqual(state.calendar.events.length, 1, "event should be appended via applyWrites");
-    assert.ok("notes" in state._loadedCounts, "applyWrites→flush ran for notes (state was forwarded)");
+    assert.strictEqual(state.notes.notes.length, 1, "note should be appended via applyWrites");
+    assert.strictEqual(state.notes.notes[0].text, "Project X kickoff doc");
   });
 
   // ─── (c) 6-phrase regression fixture (Story 8 + design review §8.1) ─────

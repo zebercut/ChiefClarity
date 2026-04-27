@@ -588,7 +588,7 @@ async function applyAdd(
   }
 
   const target = (state as any)[fileKey];
-  for (const listKey of ["tasks", "events", "items", "suggestions"] as const) {
+  for (const listKey of ["tasks", "events", "items", "suggestions", "notes"] as const) {
     if (Array.isArray(target?.[listKey])) {
       if (target[listKey].length >= MAX_ARRAY_ITEMS) {
         console.warn(`[executor] array cap reached for ${fileKey}.${listKey} (${MAX_ARRAY_ITEMS}), skipping add`);

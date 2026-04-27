@@ -1,0 +1,24 @@
+{
+  "id": "FEAT062",
+  "title": "Fix executor applyAdd array-loop to include notes",
+  "category": "Architecture/Bug Fix",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v2.02",
+  "createdAt": "2026-04-27T16:35:17.551Z",
+  "updatedAt": "2026-04-27T16:59:51.133Z",
+  "tags": [
+    "executor",
+    "bug-fix",
+    "notes",
+    "v4-chat-path"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

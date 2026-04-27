@@ -16,6 +16,7 @@ import * as path from "path";
 import assert from "assert";
 import { dispatchSkill } from "./skillDispatcher";
 import { loadSkillRegistry, _resetSkillRegistryForTests } from "./skillRegistry";
+import { applyWrites } from "./executor";
 import { setDataRoot } from "../utils/filesystem";
 import type { RouteResult } from "../types/orchestrator";
 import { submit_note_capture } from "../skills/notes_capture/handlers";
@@ -275,24 +276,9 @@ async function run(): Promise<void> {
   section("FEAT061 — dispatchSkill forwards state to handler ctx");
 
   await test("dispatchSkill forwards state to handler ctx → applyWrites reached for notes", async () => {
-    // Proof of dispatcher state forwarding: `applyWrites` mutates
-    // `state._loadedCounts[fileKey]` via flush() ONLY when state is
-    // forwarded into the handler ctx. If state were undefined (the bug
-    // FEAT061 fixes), the handler's `if (state && writes.length > 0)`
-    // guard would skip applyWrites entirely and `_loadedCounts.notes`
-    // would remain unset.
-    //
-    // Note on the inner-array assertion: the executor's array-loop in
-    // applyAdd (executor.ts:591) iterates ["tasks","events","items",
-    // "suggestions"] but does NOT include "notes", so the appended note
-    // does not reach state.notes.notes via applyWrites today. That
-    // latent executor gap is OUT OF SCOPE for FEAT061 per the
-    // design-review's "no other handler logic changes" rule and the
-    // architect's §5 risk-row 1 anticipation. The dispatcher-handoff
-    // proof below is what FEAT061 actually fixes.
     const reg = await loadProductionRegistry();
     const state = makeFixtureState();
-    assert.ok(!("notes" in state._loadedCounts), "precondition: _loadedCounts.notes unset");
+    assert.strictEqual(state.notes.notes.length, 0, "precondition: notes empty");
     const result = await dispatchSkill(
       makeRoute("notes_capture"),
       "save this idea: review the architecture diagram",
@@ -308,13 +294,41 @@ async function run(): Promise<void> {
     );
     assert.ok(result, "dispatch should not return null");
     assert.strictEqual(result!.skillId, "notes_capture");
-    // The load-bearing assertion: flush() ran (which only happens when
-    // applyWrites is reached, which only happens when state is forwarded
-    // into the handler ctx). The presence of the `notes` key in
-    // `_loadedCounts` is the post-flush signal.
-    assert.ok("notes" in state._loadedCounts, "applyWrites→flush ran for notes (state was forwarded)");
+    assert.strictEqual(state.notes.notes.length, 1, "note should be appended via applyWrites");
+    assert.strictEqual(state.notes.notes[0].text, "review the architecture diagram");
     const handlerData = (result!.handlerResult as any)?.data;
     assert.strictEqual(handlerData?.writeError, null, "handler should not surface a writeError");
+  });
+
+  // FEAT062 — executor applyAdd array-loop covers notes
+  section("Executor compatibility — applyAdd notes path (FEAT062)");
+
+  await test("applyWrites add → notes appends to state.notes.notes", async () => {
+    const state = makeFixtureState();
+    state.calendar = { _summary: "", events: [] };
+    state.tasks = { _summary: "", tasks: [] };
+    state.recurringTasks = { recurring: [] };
+    const plan: any = {
+      reply: "",
+      writes: [{
+        file: "notes",
+        action: "add",
+        data: { text: "Test note A", status: "pending" },
+      }],
+      items: [],
+      conflictsToCheck: [],
+      suggestions: [],
+      memorySignals: [],
+      topicSignals: [],
+      needsClarification: false,
+    };
+    await applyWrites(plan, state);
+    assert.strictEqual(state.notes.notes.length, 1, "executor should append note to state.notes.notes");
+    assert.strictEqual(state.notes.notes[0].text, "Test note A");
+    assert.strictEqual(typeof state.notes.notes[0].id, "string", "executor should inject id");
+    assert.ok(state.notes.notes[0].id.length > 0, "injected id should be non-empty");
+    assert.strictEqual(typeof state.notes.notes[0].createdAt, "string", "executor should inject createdAt");
+    assert.ok(state.notes.notes[0].createdAt.length > 0, "createdAt should be non-empty");
   });
 
   // 5-phrase regression set (Story 1 + Story 5)
