@@ -230,7 +230,7 @@ function fillContextMemoryFactDefaults(input: Record<string, unknown>): Record<s
   return { ...input, facts: [] };
 }
 
-function fillObservationDefaults(input: Record<string, unknown>): Record<string, unknown> {
+export function fillObservationDefaults(input: Record<string, unknown>): Record<string, unknown> {
   // userObservations writes target a named sub-array via `_arrayKey`
   // (e.g. "emotionalState"). Default to "emotionalState" if unset, since
   // bulk-input legacy emits emotional/mood logs there.

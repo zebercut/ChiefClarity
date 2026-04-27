@@ -203,6 +203,8 @@ const SUPPORTED_KEYS = new Set([
   "userToday",
   // FEAT059 — calendar_management
   "calendarEvents",
+  // FEAT063 — emotional_checkin
+  "recentEmotionalState",
 ]);
 
 function resolveContext(
@@ -304,6 +306,27 @@ function computeContextValue(key: string, state: Record<string, unknown>): unkno
         const d = typeof e.datetime === "string" ? e.datetime.slice(0, 10) : "";
         return d >= today && d <= endISO;
       });
+    }
+    // FEAT063 — emotional_checkin. 7-day window, capped at 5 most-recent
+    // entries. Empty-state safe (returns [] when userObservations or its
+    // emotionalState sub-array is missing).
+    case "recentEmotionalState": {
+      const today = (state.hotContext as { today?: string } | undefined)?.today;
+      const obs = (state as { userObservations?: { emotionalState?: unknown } })
+        .userObservations?.emotionalState;
+      if (!Array.isArray(obs) || !today) return [];
+      const cutoff = new Date(today + "T00:00:00Z");
+      cutoff.setUTCDate(cutoff.getUTCDate() - 6);
+      const cutoffISO = cutoff.toISOString().slice(0, 10);
+      const filtered = (obs as Array<{ date?: unknown; observation?: unknown }>)
+        .filter(
+          (e) =>
+            typeof e?.date === "string" &&
+            (e.date as string) >= cutoffISO &&
+            (e.date as string) <= today
+        )
+        .sort((a, b) => ((a.date as string) < (b.date as string) ? 1 : -1));
+      return filtered.slice(0, 5);
     }
     // Flat lookup for the rest
     default:

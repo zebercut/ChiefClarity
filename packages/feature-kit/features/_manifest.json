@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-04-27T16:59:51.170Z",
-  "count": 46,
+  "generatedAt": "2026-04-27T17:46:52.077Z",
+  "count": 47,
   "features": [
     {
       "id": "FEAT021",
@@ -561,6 +561,24 @@
         "settings",
         "authoring",
         "library"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT063",
+      "title": "Migrate emotional_checkin to v4 skill",
+      "category": "Architecture/Migration",
+      "moscow": "MUST",
+      "priority": 2,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "skill-migration",
+        "emotional-checkin",
+        "batch-1",
+        "template-application",
+        "safety-rule"
       ],
       "type": "feature",
       "complexity": null

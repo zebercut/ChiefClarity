@@ -321,6 +321,7 @@ function applyConfig(c: AppConfig) {
     "notes_capture",
     "calendar_management",
     "inbox_triage",
+    "emotional_checkin",
   ]);
 }
 
