@@ -222,6 +222,7 @@ export async function classifyIntentWithFallback(
 
 import type { RouteInput, RouteResult } from "../types/orchestrator";
 import { loadSkillRegistry } from "./skillRegistry";
+import { fnv1a64Hex } from "../utils/fnv1a";
 
 /** Confidence above which top-1 wins outright (no tiebreaker). */
 export const HIGH_THRESHOLD = 0.80;
@@ -315,22 +316,31 @@ async function routeToSkillInternal(
 
   const allSkills = registry.getAllSkills();
 
-  // Step 1 — Structural match (exact-string compare on slash command)
-  if (input.phrase.startsWith("/")) {
-    const cmd = input.phrase.split(/\s+/)[0];
-    const matches = allSkills.filter((s) =>
-      s.manifest.structuralTriggers.includes(cmd)
-    );
-    if (matches.length === 1) {
-      return {
-        skillId: matches[0].manifest.id,
-        confidence: 1.0,
-        routingMethod: "structural",
-        candidates: [],
-      };
+  // Step 1 — Structural match.
+  // Slash command: exact-string compare on first whitespace-delimited token.
+  // Non-slash: compare the lowercased first token against structuralTriggers
+  // so soft phrases ("feeling stressed", "focus on what matters") still
+  // route correctly when the embedder is unavailable on web.
+  {
+    const firstToken = input.phrase.trim().split(/\s+/)[0] ?? "";
+    if (firstToken.length > 0) {
+      const isSlash = firstToken.startsWith("/");
+      const tokenForMatch = isSlash ? firstToken : firstToken.toLowerCase().replace(/[^a-z0-9_-]+$/u, "");
+      const matches = allSkills.filter((s) =>
+        s.manifest.structuralTriggers.includes(tokenForMatch)
+      );
+      if (matches.length === 1) {
+        return {
+          skillId: matches[0].manifest.id,
+          confidence: 1.0,
+          routingMethod: "structural",
+          candidates: [],
+        };
+      }
+      // Zero or many matches → fall through to embedding (loader rejects
+      // duplicate triggers within a skill, but two skills can claim the
+      // same single-token trigger).
     }
-    // Zero or many matches → fall through to embedding (loader rejects
-    // duplicate triggers, so "many" should be impossible at runtime).
   }
 
   // Step 2 — Embedding similarity
@@ -443,22 +453,16 @@ function logRoutingDecision(phrase: string, result: RouteResult): void {
   );
 }
 
+/**
+ * Non-cryptographic FNV-1a hash for log correlation. NOT suitable for
+ * integrity. For cryptographic SHA-256, use src/utils/sha256.ts.
+ *
+ * Synchronous and pure JS so logging stays off the async path. The output
+ * shape (16 lowercase hex chars) matches the prior SHA-256-first-16 format —
+ * audit log consumers treat it as an opaque correlator.
+ */
 function sha256First16(s: string): string {
-  // Lazy require — keeps top-level import surface clean and avoids Metro
-  // resolving crypto for the browser bundle. In Node this returns the real
-  // SHA-256. In the browser, `require("crypto")` returns a stub without
-  // createHash → fall back to a stable marker so the log entry still has
-  // shape. Audit-log correlation only works in Node; web is informational.
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const crypto = (eval("require") as NodeRequire)("crypto") as typeof import("crypto");
-    if (typeof crypto?.createHash === "function") {
-      return crypto.createHash("sha256").update(s, "utf8").digest("hex").slice(0, 16);
-    }
-  } catch {
-    // fall through
-  }
-  return "browser-unhash";
+  return fnv1a64Hex(s);
 }
 
 /**

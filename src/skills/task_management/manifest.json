@@ -14,7 +14,7 @@
     "tasks about",
     "cancel the task"
   ],
-  "structuralTriggers": ["/task", "/todo"],
+  "structuralTriggers": ["/task", "/todo", "task", "todo", "remind"],
   "model": "haiku",
   "dataSchemas": {
     "read": ["tasks", "calendar", "topics", "objectives"],

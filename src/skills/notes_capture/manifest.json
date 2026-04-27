@@ -13,7 +13,7 @@
     "save this",
     "remember the idea"
   ],
-  "structuralTriggers": ["/note", "/idea"],
+  "structuralTriggers": ["/note", "/idea", "note", "remember", "save", "jot", "capture", "idea"],
   "model": "haiku",
   "dataSchemas": {
     "read": ["notes", "topics", "objectives"],

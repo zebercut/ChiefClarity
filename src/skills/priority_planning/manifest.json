@@ -12,7 +12,7 @@
     "where should I start",
     "rank my tasks"
   ],
-  "structuralTriggers": ["/focus", "/prioritize"],
+  "structuralTriggers": ["/focus", "/prioritize", "focus", "plan", "prioritize", "priority", "priorities"],
   "model": "sonnet",
   "dataSchemas": {
     "read": ["tasks", "calendar", "objectives"],

@@ -14,7 +14,7 @@
     "do I have anything",
     "block off time"
   ],
-  "structuralTriggers": ["/cal", "/event"],
+  "structuralTriggers": ["/cal", "/event", "schedule", "meeting", "appointment", "calendar", "book", "reschedule"],
   "model": "haiku",
   "dataSchemas": {
     "read": ["calendar", "tasks", "topics", "objectives"],

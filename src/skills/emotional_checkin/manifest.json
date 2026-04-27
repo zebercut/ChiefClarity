@@ -19,7 +19,7 @@
     "great day",
     "venting"
   ],
-  "structuralTriggers": ["/checkin", "/feeling"],
+  "structuralTriggers": ["/checkin", "/feeling", "feeling", "stressed", "anxious", "overwhelmed", "burned", "tough", "rough", "exhausted", "venting"],
   "model": "haiku",
   "dataSchemas": {
     "read": ["userObservations", "topics", "objectives", "userProfile"],

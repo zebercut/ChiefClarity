@@ -237,14 +237,13 @@ async function run(): Promise<void> {
     assert.deepStrictEqual(skill!.manifest.dataSchemas.write, ["tasks"]);
   });
 
-  await test("manifest declares exactly the structural triggers /task and /todo", async () => {
+  await test("manifest declares the structural triggers /task and /todo (plus single-token web fallbacks)", async () => {
     const reg = await loadProductionRegistry();
     const skill = reg.getSkill("task_management");
     assert.ok(skill);
-    assert.deepStrictEqual(
-      skill!.manifest.structuralTriggers.sort(),
-      ["/task", "/todo"]
-    );
+    const triggers = skill!.manifest.structuralTriggers;
+    assert.ok(triggers.includes("/task"));
+    assert.ok(triggers.includes("/todo"));
   });
 
   // Handler tests (no state — tests handler logic in isolation)

@@ -1,35 +1,30 @@
 /**
  * FEAT054 — Skill folder loader and validator.
+ * FEAT064 — Dual-loader: web/mobile + Node default read the build-time
+ * SKILL_BUNDLE; LIFEOS_SKILL_LIVE_RELOAD=1 re-enables fs.readdirSync on Node
+ * for skill-author live editing.
  *
- * Discovers skills under src/skills/<id>/ at boot, validates manifests, parses
- * locked safety zones, dynamic-imports context.ts and handlers.ts, and exposes
- * a registry API consumed by the Orchestrator (FEAT051) and the app shell.
- *
- * Node-only for v2.01: filesystem scan + xenova embedder require a Node
- * environment. On non-Node platforms (Capacitor mobile, web), loadSkillRegistry
- * resolves to an empty registry and logs a warning. A generated-index path
- * for mobile ships with FEAT044.
+ * Discovers skills, validates manifests, parses locked safety zones, and
+ * exposes a registry API consumed by the Orchestrator (FEAT051) and the app
+ * shell.
  *
  * Boot is sequential by design (see FEAT054 design review §3.1) — the boot
  * report is easier to read and the cache means warm boot is fast anyway.
  */
 
 // IMPORTANT: do NOT add top-level imports for `fs`, `path`, or `crypto`.
-// This module loads in the web/Capacitor bundle (it's imported from
-// app/_layout.tsx and app/(tabs)/_layout.tsx), and the React Native /
-// browser runtime has no `fs`. The project pattern (see src/utils/filesystem.ts)
-// is to lazy-`require` Node-only modules inside functions that only run
-// when isNode() is true. Keeping the imports lazy means the bundler never
-// tries to resolve them at module-load time.
+// This module loads in the web/Capacitor bundle, and the React Native /
+// browser runtime has no `fs`. Lazy-require Node-only modules inside the
+// live-reload branch.
 import { isNode } from "../utils/platform";
+import { sha256Hex } from "../utils/sha256";
+import { SKILL_BUNDLE } from "../skills/_generated/skillBundle";
 
 type FsLike = typeof import("fs");
 type PathLike = typeof import("path");
-type CryptoLike = typeof import("crypto");
 
-function nodeFs(): FsLike { return require("fs"); }
-function nodePath(): PathLike { return require("path"); }
-function nodeCrypto(): CryptoLike { return require("crypto"); }
+function nodeFs(): FsLike { const dynRequire: NodeRequire = eval("require"); return dynRequire("fs"); }
+function nodePath(): PathLike { const dynRequire: NodeRequire = eval("require"); return dynRequire("path"); }
 import type {
   ContextRequirements,
   LoadSkillRegistryOptions,
@@ -125,17 +120,140 @@ export function getSkillRegistry(): SkillRegistryAPI | null {
 
 async function doLoad(opts: LoadSkillRegistryOptions): Promise<SkillRegistryAPI> {
   const t0 = Date.now();
+
+  // Tests pass an explicit skillsDir (fixture folder) — those always go
+  // through the fs path so they exercise the validator on synthetic skills.
+  // Production reads the bundle by default; LIFEOS_SKILL_LIVE_RELOAD=1 on Node
+  // re-enables the fs walk for skill-author live editing.
+  const liveReload =
+    isNode() &&
+    typeof process !== "undefined" &&
+    process.env?.LIFEOS_SKILL_LIVE_RELOAD === "1";
+  const useFsPath = !!opts.skillsDir || liveReload;
+
+  if (!useFsPath) {
+    return loadFromBundle(t0, opts);
+  }
+  return loadFromFs(t0, opts);
+}
+
+async function loadFromBundle(
+  t0: number,
+  opts: LoadSkillRegistryOptions
+): Promise<SkillRegistryAPI> {
+  const loaded: LoadedSkill[] = [];
+  const rejected: SkillBootReport["rejected"] = [];
+  const seenIds = new Set<string>();
+  const seenRoutes = new Set<string>();
+
+  const ids = Object.keys(SKILL_BUNDLE).sort();
+  for (const id of ids) {
+    const entry = SKILL_BUNDLE[id];
+    try {
+      const skill = await buildSkillFromBundle(id, entry);
+      if (seenIds.has(skill.manifest.id)) {
+        const reason = `duplicate id "${skill.manifest.id}" — first-seen wins (alphabetical), rejecting "${id}"`;
+        rejected.push({ folder: id, reason });
+        console.warn(`[skillRegistry] rejected ${id}: ${reason}`);
+        continue;
+      }
+      if (skill.manifest.surface && seenRoutes.has(skill.manifest.surface.route)) {
+        const reason = `duplicate surface.route "${skill.manifest.surface.route}" — first-seen wins (alphabetical), rejecting "${id}"`;
+        rejected.push({ folder: id, reason });
+        console.warn(`[skillRegistry] rejected ${id}: ${reason}`);
+        continue;
+      }
+      seenIds.add(skill.manifest.id);
+      if (skill.manifest.surface) seenRoutes.add(skill.manifest.surface.route);
+      loaded.push(skill);
+      console.log(`[skillRegistry] Loaded skill: ${skill.manifest.id} (v${skill.manifest.version})`);
+    } catch (err: any) {
+      const reason = err?.message ?? String(err);
+      rejected.push({ folder: id, reason });
+      console.warn(`[skillRegistry] rejected ${id}: ${reason}`);
+    }
+  }
+
+  // Embeddings: Node computes from the embedder; web is null and the router
+  // falls through to its "phrase embedder unavailable" path.
+  if (isNode()) {
+    for (const s of loaded) {
+      if (s.descriptionEmbedding) continue;
+      const emb = await computeEmbedding(s.manifest.description);
+      if (emb) {
+        // Reassign — LoadedSkill's descriptionEmbedding field is mutable
+        // because the registry computes it lazily on Node.
+        (s as { descriptionEmbedding: Float32Array | null }).descriptionEmbedding = emb;
+      }
+    }
+  }
+
+  const registry = buildRegistry(loaded);
+  const totalMs = Date.now() - t0;
+  if (opts.bootReportPath && isNode()) {
+    writeBootReport(opts.bootReportPath, loaded, rejected, totalMs);
+  }
+  return registry;
+}
+
+async function buildSkillFromBundle(folderName: string, entry: typeof SKILL_BUNDLE[string]): Promise<LoadedSkill> {
+  const manifest = validateManifest(entry.manifest);
+  const lockedZones = await parseLockedZones(entry.prompt);
+  for (const declared of manifest.promptLockedZones) {
+    if (!lockedZones.has(declared)) {
+      throw new Error(
+        `manifest declares promptLockedZones=["${declared}"] but prompt.md ` +
+        `is missing the matching <!-- LOCKED:${declared} --> block`
+      );
+    }
+  }
+  if (manifest.surface) {
+    if (!SURFACE_ROUTE_PATTERN.test(manifest.surface.route)) {
+      throw new Error(
+        `surface.route "${manifest.surface.route}" must match ${SURFACE_ROUTE_PATTERN}`
+      );
+    }
+    if (RESERVED_ROUTES.has(manifest.surface.route)) {
+      throw new Error(
+        `surface.route "${manifest.surface.route}" is shell-owned (RESERVED_ROUTES)`
+      );
+    }
+  }
+  const ctx = entry.context as any;
+  const contextRequirements: ContextRequirements =
+    ctx?.contextRequirements ?? ctx?.default ?? {};
+
+  const handlersModule = entry.handlers as Record<string, unknown>;
+  const handlers: Record<string, ToolHandler> = {};
+  for (const toolName of manifest.tools) {
+    const handler = handlersModule[toolName];
+    if (typeof handler !== "function") {
+      throw new Error(
+        `manifest.tools includes "${toolName}" but handlers has no matching exported function (folder "${folderName}")`
+      );
+    }
+    handlers[toolName] = handler as ToolHandler;
+  }
+
+  return {
+    manifest,
+    prompt: entry.prompt,
+    lockedZones,
+    contextRequirements,
+    handlers,
+    descriptionEmbedding: null,
+  };
+}
+
+async function loadFromFs(t0: number, opts: LoadSkillRegistryOptions): Promise<SkillRegistryAPI> {
   const loaded: LoadedSkill[] = [];
   const rejected: SkillBootReport["rejected"] = [];
 
-  // Non-Node platforms: nothing to scan, no fs to load. Bail before any
-  // require("fs") happens. The bundle never resolves Node modules.
   if (!isNode()) {
     console.warn(
-      "[skillRegistry] non-Node platform — filesystem scan skipped, " +
-      "registry empty. Mobile path ships with FEAT044."
+      "[skillRegistry] non-Node platform — fs path requested but unavailable; using bundle"
     );
-    return buildRegistry(loaded);
+    return loadFromBundle(t0, opts);
   }
 
   const fs = nodeFs();
@@ -255,7 +373,7 @@ async function loadOneSkill(
 
   // Prompt + locked zones
   const prompt = fs.readFileSync(promptPath, "utf-8");
-  const lockedZones = parseLockedZones(prompt);
+  const lockedZones = await parseLockedZones(prompt);
   for (const declared of manifest.promptLockedZones) {
     if (!lockedZones.has(declared)) {
       throw new Error(
@@ -481,22 +599,31 @@ function expectStringArray(
 // exact bytes — no whitespace trim. Changing this format breaks the auto-patcher
 // integrity check.
 
-function parseLockedZones(prompt: string): Map<string, LockedZone> {
-  // Only called from loadOneSkill which only runs after isNode() gate.
-  const crypto = nodeCrypto();
+async function parseLockedZones(prompt: string): Promise<Map<string, LockedZone>> {
   const zones = new Map<string, LockedZone>();
   // Reset regex state defensively (global regexes preserve lastIndex).
   LOCKED_ZONE_PATTERN.lastIndex = 0;
+  // Collect first, hash second so async hashing doesn't fight the global regex.
+  const matches: Array<{ name: string; content: string; start: number; end: number }> = [];
   let m: RegExpExecArray | null;
   while ((m = LOCKED_ZONE_PATTERN.exec(prompt)) !== null) {
     const [full, name, content] = m;
-    if (zones.has(name)) {
+    if (zones.has(name) || matches.some((x) => x.name === name)) {
       throw new Error(`duplicate locked zone name "${name}" in prompt.md`);
     }
-    const start = m.index;
-    const end = m.index + full.length;
-    const hash = crypto.createHash("sha256").update(content, "utf8").digest("hex");
-    zones.set(name, { start, end, hash });
+    matches.push({
+      name,
+      content,
+      start: m.index,
+      end: m.index + full.length,
+    });
+    // Mark seen so the duplicate check above triggers across the loop.
+    zones.set(name, { start: 0, end: 0, hash: "" });
+  }
+  zones.clear();
+  for (const x of matches) {
+    const hash = await sha256Hex(x.content);
+    zones.set(x.name, { start: x.start, end: x.end, hash });
   }
   return zones;
 }

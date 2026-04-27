@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-04-27T17:46:52.077Z",
-  "count": 47,
+  "generatedAt": "2026-04-27T23:07:28.726Z",
+  "count": 48,
   "features": [
     {
       "id": "FEAT021",
@@ -412,6 +412,24 @@
         "bug-fix",
         "notes",
         "v4-chat-path"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT064",
+      "title": "Make v4 skills run on web bundle (build-time skill bundling + isomorphic crypto)",
+      "category": "Architecture",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "skill-architecture",
+        "v4",
+        "web-support",
+        "build-system",
+        "isomorphic-crypto"
       ],
       "type": "feature",
       "complexity": null

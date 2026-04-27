@@ -28,7 +28,6 @@
 
 import type { AppState } from "../types";
 import { getV4SkillsEnabled } from "./router";
-import { isNode } from "../utils/platform";
 
 export interface V4GateInput {
   state: AppState;
@@ -40,14 +39,9 @@ export interface V4GateInput {
 }
 
 export function shouldTryV4(input: V4GateInput): boolean {
-  // v4 stack is currently Node-only. The skill registry uses fs.readdirSync
-  // to scan src/skills/, which isn't available in the React Native /
-  // browser bundle. On web, the registry is empty → every route falls back
-  // → wasted Haiku calls + confusing logs. Skip v4 entirely on non-Node
-  // platforms; users get legacy until FEAT044 ships the
-  // generated-skill-index path for Capacitor (and equivalent proxy support
-  // for web, currently unscoped).
-  if (!isNode()) return false;
+  // v4 only runs when skills are enabled and the user isn't mid-clarification.
+  // Skill loading is now isomorphic (FEAT064 — registry reads SKILL_BUNDLE on
+  // every platform), so the prior Node-only short-circuit is gone.
   if (getV4SkillsEnabled().size === 0) return false;
   if (input.state._pendingContext) return false;
   return true;
