@@ -78,8 +78,43 @@ CREATE TABLE pending_improvements (
 
 ## 2. Data Schema Registry
 
-**File:** `src/config/data_schemas.json`  
+**File:** `src/config/data_schemas.json`
 **Purpose:** Defines all data categories in the system and their default access policies. Enforced by the Assembler at retrieval time — restricted data is never assembled, never passed to the LLM.
+
+> **Status:** Phase 3, not yet implemented. Today the Assembler does not enforce
+> per-skill data filtering; v4 dispatcher's `resolveContext` is a permissive
+> minimal resolver that reads whatever keys the skill declares. The
+> `dataSchemas.read` / `.write` arrays in shipped manifests are documentation
+> only until FEAT055 ships the registry. The category names below define the
+> target vocabulary; the keys actually appearing in manifests today are listed
+> in §2a.
+
+### 2a. Schema keys as used in shipped manifests (v2.02)
+
+The seven shipped skills declare these `dataSchemas.read` / `.write` keys:
+
+- **read keys:** `tasks`, `calendar`, `notes`, `objectives`, `topics`,
+  `userObservations`, `userProfile`, `recentTasks`
+- **write keys:** `tasks`, `calendar`, `notes`, `priority_log`,
+  `userObservations`, `contextMemory`, `recurringTasks`
+
+Largest write scope shipped: `inbox_triage` with six write files (`tasks`,
+`calendar`, `notes`, `contextMemory`, `userObservations`, `recurringTasks`).
+The handler enforces the allowlist per write — out-of-allowlist drops with a
+`[inbox_triage] dropped write for unsupported file=...` warn-log.
+
+Three of the inbox-triage write targets are **non-array-shaped** files. Their
+write payloads use specific shapes verified against the executor's branches:
+
+| File | Shape | Write payload |
+|---|---|---|
+| `userObservations` | `{ <arrayKey>: Observation[] }` | `{ _arrayKey: "emotionalState", observation, date, ... }` |
+| `contextMemory` | `{ facts: Fact[] }` | `{ facts: [{ text, topic, date }] }` |
+| `recurringTasks` | `{ recurring: RecurringTask[] }` | full `RecurringTask` shape with `schedule` object |
+
+The categories proposed below (`notes:work`, `notes:personal`, `medical`,
+`financial`, `family`, `attachments:*`) are the Phase 3 target vocabulary and
+do not yet appear in shipped manifests.
 
 ### Schema definition format
 

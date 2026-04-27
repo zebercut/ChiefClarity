@@ -87,18 +87,28 @@ Streaming responses begin as soon as the first tokens arrive from the Dispatcher
 Each phase ships independently. No big-bang cutover. Existing behavior is preserved
 until the migration for that intent is complete and tested.
 
-### Phase 1 — Skill Registry foundation (2 weeks)
-- Implement `src/skills/` loader and SkillRegistry
-- Implement embedding-based orchestrator (replace regex for NL routing)
-- Implement Haiku tiebreaker
-- Migrate ONE skill as proof of concept: `priority_planning`
-- Existing intents still handled by old code for everything else
+### Phase 1 — Skill Registry foundation — **DONE** (v2.01)
+- ✅ FEAT054 — `src/skills/` loader + SkillRegistry, locked-zone parsing, embedding cache
+- ✅ FEAT051 — embedding-based orchestrator + Haiku tiebreaker + `general_assistant` final fallback
+- ✅ FEAT055 — POC `priority_planning` skill end-to-end
+- ✅ FEAT050 — subsumed by FEAT054 (closed for bookkeeping)
 
-### Phase 2 — Full skill migration (3 weeks)
-- Migrate remaining intents to skill folders one at a time (see §7 of 02_skill_registry.md)
-- Each migration: create folder, test, delete old intent branch
-- Generalize Assembler to declarative context requirements
-- Remove old hardcoded intent branches from `llm.ts` as each skill is proven
+### Phase 2 — Skill migration — **DONE** (v2.02)
+- ✅ FEAT056 — chat.tsx wired through `v4Gate.shouldTryV4` → `routeToSkill` → `dispatchSkill`; `general_assistant` skill
+- ✅ FEAT057 — `task_management` (CRUD-with-multiple-ops template)
+- ✅ FEAT058 — `notes_capture` (free-form capture template)
+- ✅ FEAT059 — `calendar_management` (time-based CRUD with verbatim recurring guard)
+- ✅ FEAT060 — `inbox_triage` (multi-file write + non-chat invocation)
+- ✅ FEAT061 — dispatcher state-forwarding contract fixed
+- ✅ FEAT062 — executor `applyAdd` array-loop covers `notes`
+- ✅ FEAT063 — `emotional_checkin` (ADD-safety-scope template; first locked-zone skill)
+
+Remaining intent migrations folded into later phases: `daily_planning`,
+`weekly_planning`, `research`, `info_lookup`, `okr_update`. The `topic_*`
+intents (`topic_query`, `topic_note`) fold into the Topics work (FEAT083+,
+see `10_topics.md`). Legacy cleanup PRs (removing the migrated intent
+branches from `router.ts`, `assembler.ts`, `prompts.ts`) are accumulated for
+post-bake-in PRs per FEAT057 design review §3.5 — none merged yet.
 
 ### Phase 3 — Data Schema Registry + privacy enforcement (2 weeks)
 - Implement `src/config/data_schemas.json`
@@ -268,6 +278,33 @@ the companion the safety properties of a v3 agent within v4's plumbing.
 - *Standalone Companion agent (v3):* second loop, second cost center, no quality gain.
 - *Module-only (v2 regex):* cannot mirror language or hold a heavy moment; quality floor too low.
 
+### ADR-011: Dispatcher forwards `state` into handler `ctx` (FEAT061)
+
+**Decision:** `dispatchSkill` passes its `options.state` into the handler's
+`ctx` so handlers can call `applyWrites(state, ...)` directly. `ToolHandler`'s
+ctx type is `{ phrase, skillId, state?: unknown }` — `state` is intentionally
+typed `unknown` to keep `src/types/skills.ts` decoupled from `AppState`.
+**Rationale:** Pre-FEAT061 the dispatcher dropped state. Handlers shipped by
+FEAT057–060 read `(ctx as { state?: AppState }).state` expecting it, so the
+handler-internal `applyWrites` block was dead code on both the chat path and
+the inbox-timer path. The fix is a one-liner in the dispatcher; the contract
+makes the handler the **sole writer** on both paths. `processBundle` only
+refreshes derived state after the dispatcher returns — it does NOT call
+`applyWrites` itself, so there is no double-write.
+
+### ADR-012: Executor `applyAdd` array-loop coverage (FEAT062)
+
+**Decision:** The `applyAdd` inner-array key list is
+`["tasks", "events", "items", "suggestions", "notes"]`. Adding `notes` was
+the FEAT062 fix. The same omission still exists in `applyUpdate` and
+`applyDelete`; those are latent-but-not-live (no shipped v4 skill emits
+`update`/`delete` writes against `file: "notes"`). The first FEAT that
+introduces a notes-mutation write path takes responsibility for adding
+`notes` to those loops and a regression test. **Rationale:** Don't fix code
+paths that aren't exercised; let the FEAT that activates the path own the
+fix and its regression test. Same philosophy as `planAgenda`/`planRisks`
+from FEAT062 design review.
+
 ### ADR-010: Locked prompt zones for safety-bearing skills
 
 **Decision:** Skill prompts may declare `<!-- LOCKED:<name> -->` blocks that are
@@ -283,3 +320,32 @@ overlap a locked range are rejected at queue insertion.
   that quietly drops the safety block.
 - *Re-inject safety text after every patch:* fragile, depends on the prompt staying
   parseable. Locking at the source is simpler.
+
+---
+
+## 6. Operational note — latent bugs surface only via test trace today
+
+A pattern observed across FEAT060–FEAT062: v4 is Node-only on the web bundle
+(`v4Gate.shouldTryV4` returns false), so latent bugs in the dispatcher,
+executor, or per-file write shapes do NOT surface via real user usage. They
+surface only via test trace + reasoning during code review and testing. Two
+shipped examples:
+
+- **FEAT061** — dispatcher dropped state; FEAT057-060 handlers' `applyWrites`
+  block was dead code on every entry path. Caught by reasoning during
+  FEAT060 testing, not by smoke.
+- **FEAT062** — executor `applyAdd` array-loop missed `notes`; `notes_capture`
+  and `inbox_triage` notes adds returned `success: true` but the data was
+  silently `Object.assign`'d into `state.notes` rather than appended to
+  `state.notes.notes`. Caught by reasoning during FEAT061 testing, not by
+  smoke.
+
+**Operational rule:** after every multi-file or multi-skill change, audit the
+executor's per-file-shape branches (`applyAdd`/`applyUpdate`/`applyDelete`)
+and the dispatcher's contract surface (`ctx` shape, `SUPPORTED_KEYS`,
+`computeContextValue`) for new latent gaps. The dispatcher-level Story-2
+regression test pattern (`02_skill_registry.md §11`) is the per-skill test
+that catches the dispatcher-handoff class of bug going forward.
+
+This rule retires when FEAT044 Capacitor enables v4 on the device and real
+usage exercises these paths.

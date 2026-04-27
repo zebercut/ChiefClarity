@@ -23,6 +23,15 @@ malformed skills with a startup warning (non-fatal — other skills still load).
 
 ## 2. manifest.json spec
 
+**Shipped fields (FEAT054, see `src/types/skills.ts:SkillManifest`):** `id`
+(snake_case, `^[a-z][a-z0-9_]{2,40}$`), `version` (semver), `description`,
+`triggerPhrases`, `structuralTriggers`, `model` (`"haiku" | "sonnet"` or
+`{ default, deep }`), `modelSelector` (optional, currently only `"tool-arg"`),
+`minModelTier`, `dataSchemas` (`{ read: string[]; write: string[] }`),
+`supportsAttachments`, `tools`, `autoEvaluate`, `tokenBudget`,
+`promptLockedZones`, `surface` (or `null`).
+
+
 ```jsonc
 {
   // Identity
@@ -237,27 +246,44 @@ export const request_clarification: ToolHandler = async (args) => {
 
 ---
 
-## 7. Existing skills (migration targets)
+## 7. Skills shipped (v2.01 + v2.02) and remaining migrations
 
-Current intents in `src/llm.ts` that become skills in v4:
+### Shipped (7 skills loaded in `app/_layout.tsx`)
 
-| Current intent | Skill id | Model | Notes |
-|---|---|---|---|
-| `full_planning` | `daily_planning` | sonnet | Morning plan, Focus Brief |
-| `task_create` | `task_management` | haiku | CRUD, bulk input |
-| `task_update` | `task_management` | haiku | Merged with task_create skill |
-| `priority_ranking` | `priority_planning` | sonnet | Replaces inline priority logic |
-| `emotional_checkin` | `emotional_checkin` | haiku | Low-stakes, Haiku sufficient |
-| `inbox_triage` | `inbox_triage` | haiku | Structured triage |
-| `calendar_schedule` | `calendar` | haiku | Scheduling + conflict check |
-| `weekly_plan` | `weekly_planning` | sonnet | Once/week Sonnet call |
-| `research_query` | `research` | sonnet | Web + internal sources |
-| `notes_capture` | `notes` | haiku | Capture + tag |
-| (new in v4) | `companion` | haiku/sonnet split | Emotional support, mood/friction sensors, locked safety zone — see `08_companion.md` |
-| (new in v4) | `topics` | sonnet | Topic-scoped digest and queries; declares the Topics surface; works with TopicEmergence sensor and the executor auto-tag hook — see `10_topics.md` |
+| Skill id | FEAT | Model | Write scope (`dataSchemas.write`) | Key safety / behavior rules |
+|---|---|---|---|---|
+| `priority_planning` | FEAT055 | sonnet | `priority_log` (declared; no live writes yet — POC scope) | Reasoning skill; `submit_priority_ranking` + `request_clarification`; clarification when no clear winner |
+| `general_assistant` | FEAT056 | haiku | (none) | Freeform conversational fallback. Prompt enforces no-fabrication: redirects when user asks for a specialized action |
+| `task_management` | FEAT057 | haiku | `tasks` | Single tool `submit_task_action` covers create/update/delete/query; helper `fillTaskDefaults` in `handlers.ts` |
+| `notes_capture` | FEAT058 | haiku | `notes` | Append-only; verbatim capture (no paraphrase, no title extraction); helper `fillNoteDefaults` |
+| `calendar_management` | FEAT059 | haiku | `calendar` | Verbatim recurring guard ("NEVER creates recurring events as calendar entries"); handler runs `stripRecurringFields` before defaults; helper `fillCalendarEventDefaults` |
+| `inbox_triage` | FEAT060 | haiku | `tasks`, `calendar`, `notes`, `contextMemory`, `userObservations`, `recurringTasks` (6-file allowlist) | Multi-file write batch; non-chat invocation via `processBundle` timer using `directSkillId: "inbox_triage"`; per-write file-allowlist filter; recurring-strip ordering applied to `calendar` writes only |
+| `emotional_checkin` | FEAT063 | haiku | `userObservations` (`_arrayKey: "emotionalState"`) | First skill with `promptLockedZones: ["safety"]`; net-new safety wording locked verbatim; handler safety net strips writes when `needsClarification === true`; helper `fillObservationDefaults` |
 
-Each migration is independent and non-breaking. Old intent code runs until the
-corresponding skill folder is added, tested, and the old branch deleted.
+All seven loaded via `setV4SkillsEnabled([...])` in `app/_layout.tsx`. Empty set
+→ 100% legacy. Per-skill toggle until FEAT035 ships the settings panel.
+
+### Remaining migrations (legacy intents in `src/modules/router.ts`)
+
+`full_planning` → `daily_planning` skill (sonnet, morning plan + Focus Brief);
+`weekly_plan` → `weekly_planning` skill (sonnet, FEAT049 retro folds in);
+`research_query` → `research` skill (sonnet, web + internal); `info_lookup`,
+`okr_update`, `topic_query`, `topic_note` — the `topic_*` pair is folded into
+the Topics work (FEAT083+) per `10_topics.md`.
+
+### Net new (not yet implemented)
+
+`companion` skill — emotional support, locked safety zones (FEAT072,
+see `08_companion.md`). `topics` skill — topic-scoped digest, declares the
+Topics surface (FEAT083, see `10_topics.md`).
+
+Each migration is independent and non-breaking. Legacy intent code runs until
+the corresponding skill is added, the skill id is added to
+`setV4SkillsEnabled([...])`, and a parity bake-in completes. Legacy cleanup
+PRs (removing `task_create` / `task_update` / `task_query` / `bulk_input` /
+etc. from `router.ts:PATTERNS`, the assembler case branches, and `prompts.ts`
+CRUD rules) are accumulated for a separate post-bake-in PR per FEAT057
+design review §3.5.
 
 ---
 
@@ -296,6 +322,23 @@ If the user expresses signals of self-harm, harm to others, or acute crisis...
 ```
 
 Declare the zone names in the manifest's `promptLockedZones` array.
+
+**Zone-name constraint (as shipped, FEAT054 + FEAT063):** zone names must
+match `LOCKED_ZONE_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/` — i.e. plain
+identifiers. Heading-style names like `"## Safety"` are NOT permitted.
+The FEAT063 pattern is to use an identifier name (`"safety"`) and place the
+verbatim heading inside the locked block:
+
+```markdown
+<!-- LOCKED:safety -->
+## Safety
+
+If the user expresses signals of self-harm...
+<!-- /LOCKED -->
+```
+
+The hash mechanism (sha256 of inner content) binds the verbatim block
+contents — only the manifest-side identifier name is constrained.
 
 ### Enforcement
 
@@ -357,3 +400,91 @@ On boot, after all skills loaded:
 Tasks, Notes, Calendar surfaces are currently shell-owned but should migrate to
 their respective skills (`task_management`, `notes`, `calendar`) as part of the
 Phase 2 skill migration. This is tracked in `09_dev_plan.md`.
+
+---
+
+## 11. Handler ctx shape and shipped migration templates
+
+The contract proven across FEAT055–063 — six skill shapes, zero changes to
+shared infrastructure (chat.tsx, dispatcher, types, executor) past FEAT061 +
+FEAT062.
+
+### Handler ctx (FEAT054 + FEAT061)
+
+```ts
+type ToolHandler = (
+  args: Record<string, unknown>,
+  ctx: { phrase: string; skillId: string; state?: unknown }
+) => Promise<unknown>;
+```
+
+`state` is typed `unknown` to keep `src/types/skills.ts` decoupled from
+`AppState`. **Do NOT import `AppState` into `types/skills.ts`.** Handlers
+narrow at the use site:
+
+```ts
+const state = ctx.state as AppState | undefined;
+if (!state) return { success: false, userMessage: "...", data: {...} };
+```
+
+### Migration templates (proven across FEAT055–063)
+
+| # | Template | Reference skill | Distinguishing pattern |
+|---|---|---|---|
+| 1 | Reasoning | `priority_planning` (FEAT055) | Sonnet; multi-tool (`submit_*` + `request_clarification`); complex output |
+| 2 | CRUD with multiple ops | `task_management` (FEAT057) | Single tool (`submit_task_action`) covers create/update/delete/query; helper `fillTaskDefaults` |
+| 3 | Free-form capture | `notes_capture` (FEAT058) | Append-only; phrase → write template; helper `fillNoteDefaults` exported |
+| 4 | Time-based CRUD with safety rule | `calendar_management` (FEAT059) | Verbatim recurring guard in prompt; handler runs `stripRecurringFields` BEFORE defaults; helper `fillCalendarEventDefaults` exported |
+| 5 | Multi-file write + non-chat invocation | `inbox_triage` (FEAT060) | 6-file write allowlist; per-write `file` field; per-file defaults helper map; timer-driven entry via `processBundle` calling `dispatchSkill` with `directSkillId: "inbox_triage"` |
+| 6 | ADD safety scope (sensitive content) | `emotional_checkin` (FEAT063) | Net-new safety wording (legacy lacked it); `promptLockedZones: ["safety"]`; handler safety net strips writes when `needsClarification === true`; helper `fillObservationDefaults` exported (re-uses inbox_triage's) |
+
+Zero changes to `chat.tsx`, `types/index.ts`, `types/orchestrator.ts`,
+`executor.ts`, `assembler.ts`, or `router.ts` are required to add a new skill
+that fits one of these templates. The dispatcher's `resolveContext` may need a
+new key added to `SUPPORTED_KEYS` and a branch in `computeContextValue` if the
+skill needs new context (FEAT059 added `calendarEvents`, `calendarToday`,
+`calendarNextSevenDays`; FEAT063 added `recentEmotionalState`); this is the
+narrow extension point.
+
+### Dispatcher-level regression test (template requirement, FEAT061)
+
+**Every skill's test file MUST include at least one test that calls
+`dispatchSkill(...)` (NOT the handler directly) and asserts state mutation.**
+This is the test that catches the dispatcher-handoff class of bug — the gap
+that motivated FEAT061. Pattern:
+
+```ts
+// 1. Build fixture AppState with the relevant collection empty.
+// 2. Stub LLM client to return one canonical write op.
+// 3. Load production registry via loadProductionRegistry().
+// 4. Call dispatchSkill(routeResult, phrase, { state, llmClient, registry, enabledSkillIds }).
+// 5. Assert state mutated:
+//    - For array-shaped writes (tasks, calendar.events, recurringTasks):
+//        state.<key>.<inner>.length === N
+//    - For notes BEFORE FEAT062 was tightened:
+//        "notes" in state._loadedCounts (post-flush signal)
+//    - For notes AFTER FEAT062: direct length assertion preferred.
+```
+
+Calling the handler directly is allowed for unit tests of handler logic, but
+at least one Story-2-style test per skill must go through `dispatchSkill` to
+prove the contract end-to-end.
+
+### Helper-export pattern (FEAT059 / FEAT063)
+
+When a new skill needs an existing per-file default helper, **export it from
+the original skill's `handlers.ts` and import it directly**. Helpers shipped
+this way:
+
+| Helper | Owning skill | Imported by |
+|---|---|---|
+| `fillNoteDefaults` | `notes_capture/handlers.ts` (FEAT058) | `inbox_triage/handlers.ts` |
+| `fillCalendarEventDefaults`, `stripRecurringFields` | `calendar_management/handlers.ts` (FEAT059) | `inbox_triage/handlers.ts` |
+| `fillObservationDefaults` | `inbox_triage/handlers.ts` (FEAT060) | `emotional_checkin/handlers.ts` |
+| `fillTaskDefaults` | `task_management/handlers.ts` (FEAT057) | `inbox_triage/handlers.ts` |
+
+**Do NOT factor these into a `_shared/defaults.ts` module** until at least
+three skills need the same helper or the helpers grow non-trivial logic.
+Premature centralization was explicitly deferred per FEAT060 PM rule and
+re-confirmed by FEAT063. If `_shared/defaults.ts` is ever introduced, all
+importing skills migrate together.

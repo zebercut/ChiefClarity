@@ -252,10 +252,10 @@ These are the v4 features without an existing FEAT. Each row is a one-line spec;
 
 Aligned with `07_operations.md §4`, refined with concrete FEAT IDs, exit criteria, and migration strategy.
 
-### Phase 1 — Skill Registry foundation (2 weeks → release v2.01)
+### Phase 1 — Skill Registry foundation (v2.01) — **DONE**
 
-**Deliverables:** FEAT054 (incl. declarative `surface` field), FEAT051, FEAT050, FEAT079
-**Goal:** One skill (`priority_planning`) routes through the new pipeline end-to-end alongside the existing intent system.
+**Shipped:** FEAT054 (skill folder loader + locked-zone parsing + embedding cache + surface field), FEAT051 (embedding-based router with Haiku tiebreaker + `general_assistant` final fallback), FEAT055 (POC `priority_planning` skill end-to-end). FEAT050 was subsumed by FEAT054 and closed for bookkeeping. FEAT079 in the original plan was renumbered to FEAT055 in the manifest — same scope.
+**Goal achieved:** `priority_planning` routes through the new pipeline end-to-end; legacy intents still handled by old code per the dual-path migration window.
 
 **Migration strategy — feature-flagged dual path:**
 - New env `V4_SKILLS_ENABLED=priority_planning` (comma list)
@@ -269,11 +269,28 @@ Aligned with `07_operations.md §4`, refined with concrete FEAT IDs, exit criter
 - Unit test: skill loader rejects malformed manifests
 - Integration test: end-to-end phrase → skill → tool call → executor write → response
 
-### Phase 2 — Full skill migration + Topics (3 weeks → v2.02)
+### Phase 2 — Full skill migration + Topics (v2.02) — **PARTIALLY DONE**
 
-**Deliverables:** FEAT080, FEAT081, FEAT083 (Topics skill + surface), FEAT084 (executor topic auto-tag), FEAT020 (Capability Registry generalization), FEAT052 (Context Cache), FEAT039 (Day/Week/Month layers), partial FEAT040 (calendar admission rule), FEAT049 (Weekly retro folded into `weekly_planning` skill)
+**Shipped under v2.02 (the skill-migration slice):**
+- FEAT056 — chat.tsx wired through `v4Gate.shouldTryV4` → `routeToSkill` → `dispatchSkill`; `general_assistant` skill ships as the freeform fallback
+- FEAT057 — `task_management` migration (CRUD-with-multiple-ops template; single tool covers create/update/delete/query)
+- FEAT058 — `notes_capture` migration (free-form capture template)
+- FEAT059 — `calendar_management` migration (time-based CRUD; verbatim recurring guard)
+- FEAT060 — `inbox_triage` migration (multi-file write batch + non-chat invocation via `processBundle` timer)
+- FEAT061 — dispatcher state-forwarding contract fix (durable architectural fact, see ADR-011 in `07_operations.md`)
+- FEAT062 — executor `applyAdd` array-loop covers `notes` (durable architectural fact, see ADR-012 in `07_operations.md`)
+- FEAT063 — `emotional_checkin` migration (ADD-safety-scope template; first locked-zone skill)
+
+**Still pending under v2.02 (carried):** FEAT080/FEAT081 in the original plan are now naturally folded — the per-intent migrations shipped as FEAT057/058/059/060/063 instead of as one batch. Remaining intents (`daily_planning`, `weekly_planning`, `research`, `info_lookup`, `okr_update`) still need migrations. FEAT083 (Topics skill + surface) and FEAT084 (executor topic auto-tag) are not yet started — Topics work was pulled out of v2.02 in practice. FEAT020 (Capability Registry plug-in), FEAT052 (Context Cache), FEAT039 (Day/Week/Month objective layers), FEAT040 (Calendar admission control), and FEAT049 (Weekly retro) are likewise carried.
 
 **Topics in Phase 2:** FEAT023's existing data layer (`topics`, `topic_signals`, etc.) is reused. The skill (FEAT083) wraps it with v4 routing and declares the Topics surface. The executor hook (FEAT084) replaces per-intent topic-recording with a universal hook. The TopicEmergence sensor lands in Phase 5 — until then, topic creation is user-initiated only.
+
+**Deferred items accumulated across FEAT056–FEAT063 (carry-forward):**
+- **Latent:** `executor.ts` `applyUpdate` and `applyDelete` array-loops still missing `notes`. Latent-but-not-live today (no shipped v4 skill emits update/delete writes against `file: "notes"`). Carry to the first FEAT that introduces a notes-mutation write path.
+- **Manual mobile smoke** — every shipped FEAT defers manual smoke to Capacitor (FEAT044). v4 is Node-only on web today, so end-to-end user-visible behavior is only verifiable on the device once FEAT044 lands.
+- **Legacy classifier cleanup PRs** — for each migrated intent (`task_create`/`task_update`/`task_query`, `bulk_input`, `notes_capture`, `calendar_*`, `emotional_checkin`), a follow-on PR removes the entry from `router.ts:PATTERNS`, the case branch in `assembler.ts`, the matching prompt rules in `prompts.ts`, and the `MODEL_BY_INTENT` / `TOKEN_BUDGETS` rows. Per FEAT057 design review §3.5 these wait for a 48-hour parity bake-in. None merged yet.
+- **AGENTS.md template additions** (FEAT060–063) — multi-file write template, non-chat invocation template, ADD-safety-scope template entries deferred per the FEAT060 carry-forward decision.
+- **Real-LLM smoke** for the migrated skills (5 phrases against live Haiku/Sonnet to verify prompts produce well-formed tool calls) — recommended one-shot test post-merge per FEAT057 design review.
 
 **Migration strategy — one skill at a time:**
 1. Pick an intent from the legacy router
