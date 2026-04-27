@@ -444,11 +444,21 @@ function logRoutingDecision(phrase: string, result: RouteResult): void {
 }
 
 function sha256First16(s: string): string {
-  // Lazy require to keep this file's import surface minimal.
-  // Using Node's crypto — same module skillRegistry.ts uses for locked-zone hashes.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const crypto = require("crypto") as typeof import("crypto");
-  return crypto.createHash("sha256").update(s, "utf8").digest("hex").slice(0, 16);
+  // Lazy require — keeps top-level import surface clean and avoids Metro
+  // resolving crypto for the browser bundle. In Node this returns the real
+  // SHA-256. In the browser, `require("crypto")` returns a stub without
+  // createHash → fall back to a stable marker so the log entry still has
+  // shape. Audit-log correlation only works in Node; web is informational.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const crypto = (eval("require") as NodeRequire)("crypto") as typeof import("crypto");
+    if (typeof crypto?.createHash === "function") {
+      return crypto.createHash("sha256").update(s, "utf8").digest("hex").slice(0, 16);
+    }
+  } catch {
+    // fall through
+  }
+  return "browser-unhash";
 }
 
 /**

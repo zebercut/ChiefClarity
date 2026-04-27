@@ -1,0 +1,24 @@
+{
+  "id": "FEAT056",
+  "title": "Wire chat.tsx to v4 dispatcher + general_assistant skill",
+  "category": "Architecture",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v2.02",
+  "createdAt": "2026-04-27T03:11:57.509Z",
+  "updatedAt": "2026-04-27T10:08:22.703Z",
+  "tags": [
+    "skill-migration",
+    "chat-wiring",
+    "general-assistant",
+    "dual-path"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

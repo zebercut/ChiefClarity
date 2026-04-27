@@ -165,9 +165,18 @@ function logDispatchDecision(phrase: string, result: SkillDispatchResult): void 
 }
 
 function sha256First16(s: string): string {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const crypto = require("crypto") as typeof import("crypto");
-  return crypto.createHash("sha256").update(s, "utf8").digest("hex").slice(0, 16);
+  // Same pattern as router.ts — graceful fallback when running in browser
+  // bundle where Node crypto isn't available. See router.ts for rationale.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const crypto = (eval("require") as NodeRequire)("crypto") as typeof import("crypto");
+    if (typeof crypto?.createHash === "function") {
+      return crypto.createHash("sha256").update(s, "utf8").digest("hex").slice(0, 16);
+    }
+  } catch {
+    // fall through
+  }
+  return "browser-unhash";
 }
 
 // ─── Context resolver (minimal v2.01 version) ──────────────────────────────
