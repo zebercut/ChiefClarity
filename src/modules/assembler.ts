@@ -282,7 +282,11 @@ function estimateTokens(obj: unknown): number {
   return Math.ceil(JSON.stringify(obj).length / 3);
 }
 
-function buildTaskIndex(state: AppState) {
+/**
+ * Compact task index for LLM context — title, due, status, priority by id.
+ * Exported so v4 skill dispatchers can reuse the same shape (FEAT057+).
+ */
+export function buildTaskIndex(state: AppState) {
   const today = getUserToday(state);
   return computeTaskPriority(state.tasks.tasks, today).map(
     ({ id, title, due, status, priority }) => ({

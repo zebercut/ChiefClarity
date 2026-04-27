@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-04-27T10:08:22.737Z",
-  "count": 40,
+  "generatedAt": "2026-04-27T10:41:43.404Z",
+  "count": 41,
   "features": [
     {
       "id": "FEAT021",
@@ -308,6 +308,23 @@
         "chat-wiring",
         "general-assistant",
         "dual-path"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT057",
+      "title": "Migrate task_management intents (task_create + task_update + task_query) to v4 skill",
+      "category": "Architecture",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "skill-migration",
+        "task-management",
+        "crud",
+        "first-real-migration"
       ],
       "type": "feature",
       "complexity": null

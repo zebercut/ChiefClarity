@@ -401,11 +401,29 @@ export default function ChatScreen() {
           const routeResult = await routeToSkill({ phrase });
           const dispatchResult = await dispatchSkill(routeResult, phrase, { state: s });
           if (dispatchResult && !dispatchResult.degraded) {
+            // FEAT057: persist any writes the v4 handler made via
+            // executor.applyWrites. The handler mutates state + _dirty but
+            // doesn't flush — flush is the chat surface's responsibility,
+            // matching the legacy path that flushes at end of processPhrase.
+            // Without this, task creates/updates would be lost on restart.
+            if (s._dirty.size > 0) {
+              try {
+                await flush(s);
+              } catch (err: any) {
+                console.error("[chat] v4 flush failed (writes lost):", err);
+                // Don't block render — user already sees the v4 reply.
+                // The error is in the log; next turn will retry.
+              }
+            }
+
             setMessages((m: Message[]) => [...m, {
               role: "assistant" as const,
               content: dispatchResult.userMessage,
               timestamp: now,
               isQuestion: dispatchResult.clarificationRequired,
+              // FEAT057: pass through structured items from the skill handler
+              // (used by task_management for query results).
+              items: dispatchResult.items,
               v4Meta: {
                 skillId: dispatchResult.skillId,
                 confidence: routeResult.confidence,

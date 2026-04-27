@@ -314,7 +314,7 @@ function applyConfig(c: AppConfig) {
   // FEAT056: enable both priority_planning (FEAT055 POC) and general_assistant
   // (the freeform fallback). More skills get added here as they migrate via
   // FEAT057+ per-intent specs.
-  setV4SkillsEnabled(["priority_planning", "general_assistant"]);
+  setV4SkillsEnabled(["priority_planning", "general_assistant", "task_management"]);
 }
 
 const styles = StyleSheet.create({

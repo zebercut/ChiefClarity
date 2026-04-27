@@ -60,4 +60,10 @@ export interface SkillDispatchResult {
   clarificationRequired?: boolean;
   /** Set when the dispatcher degraded gracefully (e.g., LLM throw). */
   degraded?: { reason: string };
+  /**
+   * FEAT057: structured items the skill produced (e.g. task_query
+   * results). Pass-through from `handlerResult.items`. The chat surface
+   * renders these via the existing ItemListCard.
+   */
+  items?: import("./index").ActionItem[];
 }

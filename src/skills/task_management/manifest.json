@@ -1,0 +1,29 @@
+{
+  "id": "task_management",
+  "version": "1.0.0",
+  "description": "Create, update, query, and delete tasks. Handles 'add a task', 'mark X done', 'show my tasks', 'set priority on Y', 'delete the task'. Default priority medium unless urgency is signaled. Always references existing tasks by id from tasksIndex.",
+  "triggerPhrases": [
+    "add a task",
+    "create a todo",
+    "remind me to",
+    "mark X done",
+    "delete the task",
+    "show me my tasks",
+    "what tasks do I have",
+    "set priority",
+    "tasks about",
+    "cancel the task"
+  ],
+  "structuralTriggers": ["/task", "/todo"],
+  "model": "haiku",
+  "dataSchemas": {
+    "read": ["tasks", "calendar", "topics", "objectives"],
+    "write": ["tasks"]
+  },
+  "supportsAttachments": false,
+  "tools": ["submit_task_action"],
+  "autoEvaluate": true,
+  "tokenBudget": 3000,
+  "promptLockedZones": [],
+  "surface": null
+}
