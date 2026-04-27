@@ -28,15 +28,22 @@
  *      against silent data loss (the bug the code reviewer fixed).
  */
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import assert from "assert";
 import { dispatchSkill } from "./skillDispatcher";
 import { loadSkillRegistry, _resetSkillRegistryForTests } from "./skillRegistry";
 import { setV4SkillsEnabled, _resetOrchestratorForTests } from "./router";
 import { processBundle } from "./inbox";
+import { setDataRoot } from "../utils/filesystem";
 import type { RouteResult } from "../types/orchestrator";
 import { submit_inbox_triage } from "../skills/inbox_triage/handlers";
 import { applyWrites } from "./executor";
+
+// Redirect filesystem writes during tests to a temp dir so applyWrites'
+// flush() does not leak fixture data to the repo cwd. (FEAT060 leakage.)
+const TMP_DATA_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), "feat061-it-"));
+setDataRoot(TMP_DATA_ROOT);
 
 // ─── Test runner ────────────────────────────────────────────────────────────
 
@@ -558,6 +565,51 @@ async function run(): Promise<void> {
     assert.strictEqual(result.success, true);
     assert.strictEqual(typeof result.userMessage, "string");
     assert.strictEqual(result.data.writes.length, 0);
+  });
+
+  // ─── FEAT061 — dispatcher state forwarding regression ───────────────────
+  section("FEAT061 — dispatchSkill forwards state to handler ctx (chat-driven path)");
+
+  await test("dispatchSkill forwards state to handler ctx → fixture state mutated (chat-driven path)", async () => {
+    // Chat-driven path: dispatcher MUST forward state to the handler so
+    // applyWrites mutates the fixture. (The timer path via processBundle
+    // intentionally does NOT pass state; it owns its own write loop. That
+    // path is unaffected by this fix.)
+    //
+    // Note: the executor's applyAdd array-loop covers tasks/calendar/
+    // recurringTasks/contextMemory but not "notes" — so we assert the
+    // tasks and calendar collections grew (proving applyWrites ran with
+    // forwarded state) and use `_loadedCounts` as the post-flush signal
+    // for the notes write. Adding "notes" to the executor's array-loop
+    // is a separate latent fix outside FEAT061's scope.
+    const reg = await loadProductionRegistry();
+    const state = makeFixtureState();
+    assert.strictEqual(state.tasks.tasks.length, 0, "precondition: tasks empty");
+    assert.strictEqual(state.calendar.events.length, 0, "precondition: calendar empty");
+    const result = await dispatchSkill(
+      makeRoute("inbox_triage"),
+      "Task A by Friday. Meeting Tue 3pm. Idea: Project X kickoff doc.",
+      {
+        registry: reg,
+        enabledSkillIds: new Set(["inbox_triage"]),
+        state,
+        llmClient: stubLlm("submit_inbox_triage", {
+          reply: "Created task / event / note",
+          writes: [
+            { file: "tasks", action: "add", data: { title: "Task A", priority: "medium", status: "pending" } },
+            { file: "calendar", action: "add", data: { title: "Meeting", datetime: "2026-04-28T15:00:00", durationMinutes: 60 } },
+            { file: "notes", action: "add", data: { text: "Project X kickoff doc" } },
+          ],
+        }),
+      }
+    );
+    assert.ok(result, "dispatch should not return null");
+    assert.strictEqual(result!.skillId, "inbox_triage");
+    // Load-bearing assertions: applyWrites ran via the dispatcher path
+    // (tasks + calendar collections grew, and flush ran for notes).
+    assert.strictEqual(state.tasks.tasks.length, 1, "task should be appended via applyWrites");
+    assert.strictEqual(state.calendar.events.length, 1, "event should be appended via applyWrites");
+    assert.ok("notes" in state._loadedCounts, "applyWrites→flush ran for notes (state was forwarded)");
   });
 
   // ─── (c) 6-phrase regression fixture (Story 8 + design review §8.1) ─────

@@ -11,12 +11,19 @@
  *   4. Note shape completeness (every required Note field populated)
  */
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import assert from "assert";
 import { dispatchSkill } from "./skillDispatcher";
 import { loadSkillRegistry, _resetSkillRegistryForTests } from "./skillRegistry";
+import { setDataRoot } from "../utils/filesystem";
 import type { RouteResult } from "../types/orchestrator";
 import { submit_note_capture } from "../skills/notes_capture/handlers";
+
+// Redirect filesystem writes during tests to a temp dir so applyWrites'
+// flush() does not leak fixture data to the repo cwd. (FEAT060 leakage.)
+const TMP_DATA_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), "feat061-nc-"));
+setDataRoot(TMP_DATA_ROOT);
 
 // ─── Test runner ────────────────────────────────────────────────────────────
 
@@ -262,6 +269,52 @@ async function run(): Promise<void> {
     assert.strictEqual(result.success, false);
     assert.ok(result.userMessage.includes("write failed"));
     assert.ok(result.data.writeError);
+  });
+
+  // FEAT061 — dispatcher state forwarding regression
+  section("FEAT061 — dispatchSkill forwards state to handler ctx");
+
+  await test("dispatchSkill forwards state to handler ctx → applyWrites reached for notes", async () => {
+    // Proof of dispatcher state forwarding: `applyWrites` mutates
+    // `state._loadedCounts[fileKey]` via flush() ONLY when state is
+    // forwarded into the handler ctx. If state were undefined (the bug
+    // FEAT061 fixes), the handler's `if (state && writes.length > 0)`
+    // guard would skip applyWrites entirely and `_loadedCounts.notes`
+    // would remain unset.
+    //
+    // Note on the inner-array assertion: the executor's array-loop in
+    // applyAdd (executor.ts:591) iterates ["tasks","events","items",
+    // "suggestions"] but does NOT include "notes", so the appended note
+    // does not reach state.notes.notes via applyWrites today. That
+    // latent executor gap is OUT OF SCOPE for FEAT061 per the
+    // design-review's "no other handler logic changes" rule and the
+    // architect's §5 risk-row 1 anticipation. The dispatcher-handoff
+    // proof below is what FEAT061 actually fixes.
+    const reg = await loadProductionRegistry();
+    const state = makeFixtureState();
+    assert.ok(!("notes" in state._loadedCounts), "precondition: _loadedCounts.notes unset");
+    const result = await dispatchSkill(
+      makeRoute("notes_capture"),
+      "save this idea: review the architecture diagram",
+      {
+        registry: reg,
+        enabledSkillIds: new Set(["notes_capture"]),
+        state,
+        llmClient: stubLlm("submit_note_capture", {
+          reply: "Saved.",
+          writes: [{ action: "add", data: { text: "review the architecture diagram", status: "pending" } }],
+        }),
+      }
+    );
+    assert.ok(result, "dispatch should not return null");
+    assert.strictEqual(result!.skillId, "notes_capture");
+    // The load-bearing assertion: flush() ran (which only happens when
+    // applyWrites is reached, which only happens when state is forwarded
+    // into the handler ctx). The presence of the `notes` key in
+    // `_loadedCounts` is the post-flush signal.
+    assert.ok("notes" in state._loadedCounts, "applyWrites→flush ran for notes (state was forwarded)");
+    const handlerData = (result!.handlerResult as any)?.data;
+    assert.strictEqual(handlerData?.writeError, null, "handler should not surface a writeError");
   });
 
   // 5-phrase regression set (Story 1 + Story 5)

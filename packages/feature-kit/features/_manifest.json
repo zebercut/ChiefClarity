@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-04-27T15:49:25.606Z",
-  "count": 44,
+  "generatedAt": "2026-04-27T16:28:05.858Z",
+  "count": 45,
   "features": [
     {
       "id": "FEAT021",
@@ -378,6 +378,23 @@
         "batch-1",
         "template-application",
         "multi-file-write"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT061",
+      "title": "Fix v4 dispatcher state forwarding to handlers",
+      "category": "Architecture/Bug Fix",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "skill-migration",
+        "dispatcher",
+        "bug-fix",
+        "template-fix"
       ],
       "type": "feature",
       "complexity": null

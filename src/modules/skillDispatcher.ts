@@ -130,7 +130,7 @@ export async function dispatchSkill(
 
   let handlerResult: any;
   try {
-    handlerResult = await handler(toolArgs, { phrase, skillId: skill.manifest.id });
+    handlerResult = await handler(toolArgs, { phrase, skillId: skill.manifest.id, state: options.state });
   } catch (err: any) {
     return degradedAndLog(skill, phrase, `handler "${toolName}" threw: ${err?.message ?? err}`);
   }

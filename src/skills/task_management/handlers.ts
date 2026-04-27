@@ -35,7 +35,7 @@ interface TaskActionArgs {
  */
 export const submit_task_action: ToolHandler = async (args, ctx) => {
   const a = (args ?? {}) as unknown as TaskActionArgs;
-  const state = (ctx as { state?: AppState }).state;
+  const state = ctx.state as AppState | undefined;
 
   // Defensive coercion: every write targets the "tasks" file. The skill's
   // dataSchemas.write declaration guarantees this contractually; this

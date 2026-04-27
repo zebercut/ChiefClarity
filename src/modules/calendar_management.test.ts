@@ -15,13 +15,20 @@
  *   5. Story 5 — template validation
  */
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import assert from "assert";
 import { dispatchSkill } from "./skillDispatcher";
 import { loadSkillRegistry, _resetSkillRegistryForTests } from "./skillRegistry";
+import { setDataRoot } from "../utils/filesystem";
 import type { RouteResult } from "../types/orchestrator";
 import { submit_calendar_action } from "../skills/calendar_management/handlers";
 import { getActiveEvents } from "./assembler";
+
+// Redirect filesystem writes during tests to a temp dir so applyWrites'
+// flush() does not leak fixture data to the repo cwd. (FEAT060 leakage.)
+const TMP_DATA_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), "feat061-cm-"));
+setDataRoot(TMP_DATA_ROOT);
 
 // ─── Test runner ────────────────────────────────────────────────────────────
 
@@ -87,6 +94,7 @@ function makeFixtureState(extras?: any): any {
     tasks: { _summary: "", tasks: [] },
     topicManifest: { topics: [], signals: [], suggestions: [] },
     contextMemory: { facts: [] },
+    contradictionIndex: { byDate: {} },
   };
 }
 
@@ -404,6 +412,33 @@ async function run(): Promise<void> {
     );
     assert.strictEqual(result.data.items.length, 1);
     assert.strictEqual(result.data.items[0].id, "evt-3");
+  });
+
+  // FEAT061 — dispatcher state forwarding regression
+  section("FEAT061 — dispatchSkill forwards state to handler ctx");
+
+  await test("dispatchSkill forwards state to handler ctx → fixture state mutated", async () => {
+    const reg = await loadProductionRegistry();
+    const state = makeFixtureState();
+    assert.strictEqual(state.calendar.events.length, 0, "precondition: empty");
+    const result = await dispatchSkill(
+      makeRoute("calendar_management"),
+      "schedule a sync on Friday at 3pm",
+      {
+        registry: reg,
+        enabledSkillIds: new Set(["calendar_management"]),
+        state,
+        llmClient: stubLlm("submit_calendar_action", {
+          reply: "Scheduled: Sync — Fri 3:00 PM",
+          writes: [{ action: "add", data: { title: "Sync", datetime: "2026-05-01T15:00:00", durationMinutes: 60 } }],
+        }),
+      }
+    );
+    assert.ok(result, "dispatch should not return null");
+    assert.strictEqual(result!.skillId, "calendar_management");
+    // The load-bearing assertion: applyWrites ran via the dispatcher path.
+    assert.strictEqual(state.calendar.events.length, 1, "event should be appended via applyWrites");
+    assert.strictEqual(state.calendar.events[0].title, "Sync");
   });
 
   // 7-phrase regression set (Story 1, design review §6.10)

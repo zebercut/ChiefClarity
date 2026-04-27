@@ -52,7 +52,7 @@ const WRITE_ALLOWLIST: ReadonlySet<FileKey> = new Set<FileKey>([
 
 export const submit_inbox_triage: ToolHandler = async (args, ctx) => {
   const a = (args ?? {}) as unknown as InboxTriageArgs;
-  const state = (ctx as { state?: AppState }).state;
+  const state = ctx.state as AppState | undefined;
 
   // Multi-file write loop: each write declares its own `file`. We honor
   // it (unlike single-file skills FEAT057-059 which force one constant)

@@ -24,7 +24,7 @@ export interface ContextRequirements {
 
 export type ToolHandler = (
   args: Record<string, unknown>,
-  ctx: Record<string, unknown>
+  ctx: { phrase: string; skillId: string; state?: unknown }
 ) => Promise<unknown>;
 
 export type ModelTier = "haiku" | "sonnet";

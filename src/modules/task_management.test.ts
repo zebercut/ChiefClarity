@@ -16,12 +16,19 @@
  * post-merge step.
  */
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import assert from "assert";
 import { dispatchSkill } from "./skillDispatcher";
 import { loadSkillRegistry, _resetSkillRegistryForTests } from "./skillRegistry";
+import { setDataRoot } from "../utils/filesystem";
 import type { RouteResult } from "../types/orchestrator";
 import { submit_task_action } from "../skills/task_management/handlers";
+
+// Redirect filesystem writes during tests to a temp dir so applyWrites'
+// flush() does not leak fixture data to the repo cwd. (FEAT060 leakage.)
+const TMP_DATA_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), "feat061-tm-"));
+setDataRoot(TMP_DATA_ROOT);
 
 // ─── Test runner (project convention) ─────────────────────────────────────
 
@@ -325,6 +332,34 @@ async function run(): Promise<void> {
     assert.strictEqual(result.success, false);
     assert.ok(result.userMessage.includes("write failed"));
     assert.ok(result.data.writeError);
+  });
+
+  // FEAT061 — dispatcher state forwarding regression
+  section("FEAT061 — dispatchSkill forwards state to handler ctx");
+
+  await test("dispatchSkill forwards state to handler ctx → fixture state mutated", async () => {
+    const reg = await loadProductionRegistry();
+    const state = makeFixtureState();
+    assert.strictEqual(state.tasks.tasks.length, 0, "precondition: empty");
+    const result = await dispatchSkill(
+      makeRoute("task_management"),
+      "add a task to call the dentist",
+      {
+        registry: reg,
+        enabledSkillIds: new Set(["task_management"]),
+        state,
+        llmClient: stubLlm("submit_task_action", {
+          reply: "Added: Call the dentist",
+          writes: [{ action: "add", data: { title: "Call the dentist", priority: "medium", status: "pending" } }],
+        }),
+      }
+    );
+    assert.ok(result, "dispatch should not return null");
+    assert.strictEqual(result!.skillId, "task_management");
+    // The load-bearing assertion: applyWrites ran via the dispatcher path,
+    // proving the dispatcher forwarded state into the handler ctx.
+    assert.strictEqual(state.tasks.tasks.length, 1, "task should be appended via applyWrites");
+    assert.strictEqual(state.tasks.tasks[0].title, "Call the dentist");
   });
 
   // 10-phrase regression set

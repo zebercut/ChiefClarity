@@ -40,7 +40,7 @@ interface CalendarActionArgs {
  */
 export const submit_calendar_action: ToolHandler = async (args, ctx) => {
   const a = (args ?? {}) as unknown as CalendarActionArgs;
-  const state = (ctx as { state?: AppState }).state;
+  const state = ctx.state as AppState | undefined;
 
   const writes = (a.writes ?? [])
     .filter((w) => w && (w.action === "add" || w.action === "update" || w.action === "delete"))

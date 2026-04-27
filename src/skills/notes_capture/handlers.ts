@@ -25,7 +25,7 @@ interface NoteCaptureArgs {
  */
 export const submit_note_capture: ToolHandler = async (args, ctx) => {
   const a = (args ?? {}) as unknown as NoteCaptureArgs;
-  const state = (ctx as { state?: AppState }).state;
+  const state = ctx.state as AppState | undefined;
 
   // Defensive coercion: drop malformed writes; force file="notes".
   // Fill in Note defaults the LLM may omit (executor adds id + createdAt
