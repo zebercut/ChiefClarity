@@ -282,7 +282,11 @@ function estimateTokens(obj: unknown): number {
   return Math.ceil(JSON.stringify(obj).length / 3);
 }
 
-function buildTaskIndex(state: AppState) {
+/**
+ * Compact task index for LLM context — title, due, status, priority by id.
+ * Exported so v4 skill dispatchers can reuse the same shape (FEAT057+).
+ */
+export function buildTaskIndex(state: AppState) {
   const today = getUserToday(state);
   return computeTaskPriority(state.tasks.tasks, today).map(
     ({ id, title, due, status, priority }) => ({
@@ -322,7 +326,13 @@ function buildOkrProgress(state: AppState): Record<string, { activity: number; o
   return result;
 }
 
-function getActiveEvents(state: AppState) {
+/**
+ * Active events from today onward — filters out cancelled, archived,
+ * undated, and past events. Exported (FEAT059) so the v4 skill
+ * dispatcher resolver can reuse it for the `calendarEvents`,
+ * `calendarToday`, and `calendarNextSevenDays` context keys.
+ */
+export function getActiveEvents(state: AppState) {
   const today = getUserToday(state); // "YYYY-MM-DD"
   // Only include events from today onward with a valid datetime.
   // Events without a datetime are excluded — they have no place in a

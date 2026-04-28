@@ -1,0 +1,34 @@
+{
+  "id": "emotional_checkin",
+  "version": "1.0.0",
+  "description": "Capture short emotional disclosures verbatim into userObservations.emotionalState. Handles 'I'm feeling stressed', 'feeling anxious', 'I'm overwhelmed', 'I'm burned out', 'tough day', 'great day', 'feeling productive', 'venting'. One short warm acknowledgement, no platitudes, no advice unless asked. Crisis signals (explicit suicide / self-harm / harm-others / severe-hopelessness-with-planning) trigger a locked support reply with zero writes.",
+  "triggerPhrases": [
+    "feeling stressed",
+    "feeling anxious",
+    "feeling overwhelmed",
+    "feeling burned out",
+    "feeling exhausted",
+    "feeling productive",
+    "feeling great",
+    "I'm stressed",
+    "I'm overwhelmed",
+    "I'm burned out",
+    "I'm exhausted",
+    "tough day",
+    "rough day",
+    "great day",
+    "venting"
+  ],
+  "structuralTriggers": ["/checkin", "/feeling", "feeling", "stressed", "anxious", "overwhelmed", "burned", "tough", "rough", "exhausted", "venting"],
+  "model": "haiku",
+  "dataSchemas": {
+    "read": ["userObservations", "topics", "objectives", "userProfile"],
+    "write": ["userObservations"]
+  },
+  "supportsAttachments": false,
+  "tools": ["submit_emotional_checkin"],
+  "autoEvaluate": true,
+  "tokenBudget": 600,
+  "promptLockedZones": ["safety"],
+  "surface": null
+}

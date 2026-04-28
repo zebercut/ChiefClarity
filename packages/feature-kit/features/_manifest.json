@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-04-27T02:43:46.865Z",
-  "count": 39,
+  "generatedAt": "2026-04-28T10:00:48.935Z",
+  "count": 51,
   "features": [
     {
       "id": "FEAT021",
@@ -296,6 +296,200 @@
       "complexity": null
     },
     {
+      "id": "FEAT056",
+      "title": "Wire chat.tsx to v4 dispatcher + general_assistant skill",
+      "category": "Architecture",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "skill-migration",
+        "chat-wiring",
+        "general-assistant",
+        "dual-path"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT057",
+      "title": "Migrate task_management intents (task_create + task_update + task_query) to v4 skill",
+      "category": "Architecture",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "skill-migration",
+        "task-management",
+        "crud",
+        "first-real-migration"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT058",
+      "title": "notes_capture skill (free-form note capture, second batch-1 migration)",
+      "category": "Architecture",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "skill-migration",
+        "notes",
+        "batch-1",
+        "template-validation"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT059",
+      "title": "Migrate calendar_management intents (calendar_create + calendar_update + calendar_query) to v4 skill",
+      "category": "Architecture",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "skill-migration",
+        "calendar",
+        "batch-1",
+        "template-application"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT060",
+      "title": "Migrate inbox_triage / bulk_input to v4 skill",
+      "category": "Architecture",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "skill-migration",
+        "inbox",
+        "bulk-input",
+        "batch-1",
+        "template-application",
+        "multi-file-write"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT061",
+      "title": "Fix v4 dispatcher state forwarding to handlers",
+      "category": "Architecture/Bug Fix",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "skill-migration",
+        "dispatcher",
+        "bug-fix",
+        "template-fix"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT062",
+      "title": "Fix executor applyAdd array-loop to include notes",
+      "category": "Architecture/Bug Fix",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "executor",
+        "bug-fix",
+        "notes",
+        "v4-chat-path"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT064",
+      "title": "Make v4 skills run on web bundle (build-time skill bundling + isomorphic crypto)",
+      "category": "Architecture",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "skill-architecture",
+        "v4",
+        "web-support",
+        "build-system",
+        "isomorphic-crypto"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT065",
+      "title": "Fix v4 dispatcher: declare tool schemas per skill",
+      "category": "Architecture/Bug Fix",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "skill-architecture",
+        "v4",
+        "production-bug",
+        "tool-schemas",
+        "real-llm-smoke"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT066",
+      "title": "Use triage's intent classification as primary v4 routing signal",
+      "category": "Architecture/Bug Fix",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "skill-routing",
+        "v4",
+        "triage",
+        "production-bug",
+        "real-llm-smoke"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT067",
+      "title": "Enable embeddings on web bundle",
+      "category": "Architecture/Infrastructure",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "embeddings",
+        "web",
+        "wasm",
+        "xenova",
+        "routing",
+        "rag-prep"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
       "id": "FEAT018",
       "title": "Google Calendar integration (read-only sync)",
       "category": "Integrations",
@@ -440,6 +634,24 @@
         "settings",
         "authoring",
         "library"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT063",
+      "title": "Migrate emotional_checkin to v4 skill",
+      "category": "Architecture/Migration",
+      "moscow": "MUST",
+      "priority": 2,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "skill-migration",
+        "emotional-checkin",
+        "batch-1",
+        "template-application",
+        "safety-rule"
       ],
       "type": "feature",
       "complexity": null

@@ -1,17 +1,21 @@
-# Chief Clarity v2 - Project Rules
+# Chief Clarity - Project Rules
 
 ## Architecture Documentation
 
-**MANDATORY:** When adding new functionality, changing architecture, adding new data files, new intents, new modules, or modifying the data flow, you MUST update `docs/new_architecture_typescript.md` to reflect the changes. This file is the single source of truth for the system's architecture.
+**MANDATORY:** When adding new functionality, changing architecture, adding new data files, new intents, new modules, or modifying the data flow, you MUST update the relevant file under `docs/v4/` to reflect the changes. The `docs/v4/` folder is the single source of truth for the system's architecture. Old v2/v3 docs in `docs/archive/` are preserved for historical context only — do NOT edit them.
 
-**What to update:**
-- New data files: add to Section 4 (Data File Architecture) and Section 3 (Project Structure)
-- New modules: add to Section 6 (Module Responsibilities)
-- New intents: add to Section 6 (Assembler Context by Intent) and token budgets in Section 8
-- New types: add to Section 5 (TypeScript Interfaces)
-- Architecture decisions: add to Section 9 (Architecture Decision Record)
-- New features: add to Section 12 (Feature Catalog)
-- Changed data flow: update Section 6 diagram
+**Where to update (by change type):**
+- New skills (skill folder, manifest, prompt, context, handlers): `docs/v4/02_skill_registry.md`
+- New modules in `src/modules/` or changes to dispatch / executor / assembler / router: `docs/v4/01_request_flow.md`
+- New data files / data schemas: `docs/v4/03_memory_privacy.md`
+- New attachment flows or RAG changes: `docs/v4/04_attachments_rag.md`
+- New proactive sensors / nudge logic: `docs/v4/05_proactive_intelligence.md`
+- Self-improvement / feedback flows: `docs/v4/06_feedback_improvement.md`
+- Scheduling / cost / latency / migration phases / ADRs: `docs/v4/07_operations.md`
+- Companion / emotional support: `docs/v4/08_companion.md`
+- Build/migration plan changes: `docs/v4/09_dev_plan.md`
+- Topics / topic-aware planning: `docs/v4/10_topics.md`
+- High-level overview, system diagram, component catalog, non-negotiables: `docs/v4/00_overview.md`
 
 **When to update:** After the code changes compile and work, before marking the task as done.
 

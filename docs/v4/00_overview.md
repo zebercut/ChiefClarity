@@ -1,8 +1,26 @@
 # Chief Clarity v4 — Architecture Overview
 
-**Status:** Proposed  
-**Replaces:** `docs/architecture_v3_multi_agent.md` (rejected — see ADR in `07_operations.md`)  
+**Status:** Phase 1 (v2.01) and Phase 2 (v2.02) shipped; Phases 3–9 still proposed.
+**Replaces:** `docs/architecture_v3_multi_agent.md` (rejected — see ADR in `07_operations.md`)
 **Source of truth:** This folder (`docs/v4/`) until implementation is complete, then merged into `docs/new_architecture_typescript.md`
+
+## What's shipped (v2.01 + v2.02)
+
+The interactive backbone is live. Skill registry (FEAT054) discovers skills under
+`src/skills/<id>/` at boot, validates manifests, parses locked zones, and caches
+description embeddings. The embedding-based router (FEAT051) replaces regex for
+NL routing with a Haiku tiebreaker fallback and a `general_assistant` final
+fallback. The dispatcher (FEAT055) executes one routed skill end-to-end against
+a stub or live LLM and returns either a normal result, a `degraded` result with
+a reason, or `null` when v4 should not handle the phrase. Seven skills are
+loaded in `app/_layout.tsx` and gated by `setV4SkillsEnabled([...])`:
+`priority_planning`, `general_assistant`, `task_management`, `notes_capture`,
+`calendar_management`, `inbox_triage`, `emotional_checkin`. Two follow-on fixes
+hardened the path: dispatcher state forwarding into handler `ctx.state`
+(FEAT061) and the executor `applyAdd` array-loop now covering `notes`
+(FEAT062). v4 is **Node-only by design** until FEAT044 Capacitor — `v4Gate.shouldTryV4`
+returns false on web/RN bundles so the legacy path runs. Phases 3+ (privacy,
+attachments, proactive, feedback, companion, topics) remain as designed below.
 
 ---
 
@@ -59,11 +77,13 @@ heavy lifting deterministic.
 
 | Component | Type | Status | File |
 |---|---|---|---|
-| **Orchestrator** | TypeScript + optional Haiku tiebreaker | Refactor | `src/modules/router.ts` |
-| **Skill Registry** | Folder-based config, auto-loaded on boot | New | `src/skills/` |
-| **Assembler** | TypeScript, declarative, token-budgeted | Generalize | `src/modules/assembler.ts` |
-| **LLM Dispatcher** | One call, skill-aware | Refactor | `src/llm.ts` |
-| **Executor** | TypeScript, runs tool calls, audit log | Extend | `src/modules/executor.ts` |
+| **v4 Gate** | Pure function, Node-only check + pending-context guard | Shipped (FEAT056) | `src/modules/v4Gate.ts` |
+| **Orchestrator (router)** | Triage-hint primary (FEAT066) + structural-trigger + embedding match + Haiku tiebreaker + `general_assistant` final fallback. Embedding step now lights up on web (FEAT067) — `@xenova/transformers` runs in-browser via WASM. | Shipped (FEAT051 + FEAT066 + FEAT067) | `src/modules/router.ts` (`routeToSkill`, `setV4SkillsEnabled`) |
+| **Skill Registry** | Folder-based config, auto-loaded on boot, locked-zone parsing. Skill `descriptionEmbedding` is pre-computed at bundle time (FEAT067) and shipped in `SKILL_BUNDLE` for both web and Node — no `if (isNode())` runtime gate. | Shipped (FEAT054 + FEAT067) | `src/modules/skillRegistry.ts` + `src/skills/<id>/` |
+| **Skill Dispatcher** | Gates on `getV4SkillsEnabled()`, resolves context, ONE LLM call, dispatches to handler with `ctx.state` | Shipped (FEAT055 + FEAT061) | `src/modules/skillDispatcher.ts` |
+| **Assembler (legacy + minimal v4 resolver)** | Per-intent switch (legacy) + minimal resolver in dispatcher (v4); full declarative version still proposed | Partial — full version is Phase 3 | `src/modules/assembler.ts`, `src/modules/skillDispatcher.ts:resolveContext` |
+| **LLM Dispatcher (legacy)** | `MODEL_BY_INTENT` + `SONNET_FALLBACK_INTENTS`, used by every non-migrated intent | Refactor — legacy still in place per dual-path migration | `src/modules/llm.ts` |
+| **Executor** | Atomic writes, dedup, conflict detection; `applyAdd` array-loop covers `notes` (FEAT062); `applyUpdate`/`applyDelete` `notes` coverage still latent | Shipped, partially extended | `src/modules/executor.ts` |
 
 ### Registry & Config
 
@@ -127,10 +147,43 @@ and decisions move into the skill. See `10_topics.md` for the full spec.
 
 ## System Diagram
 
+The shipped (v2.02) interactive path is shown first; the proposed full Phase-3+
+shape (policy filter, declarative assembler, audit log) is shown after.
+
 ```
-═══════════════════════════════════════════════════
-  INTERACTIVE PATH  (one reasoning call per phrase)
-═══════════════════════════════════════════════════
+═══════════════════════════════════════════════════════
+  INTERACTIVE PATH — AS SHIPPED (v2.02, Node-only)
+═══════════════════════════════════════════════════════
+
+  chat.tsx: user phrase
+          │
+          ▼
+   runTriage(...)            preserves emotional/friction detection
+          │
+          ▼
+   v4Gate.shouldTryV4        Node-only check; rolls back to legacy on web,
+   (gate)                     when enabled set is empty, or pending-context
+          │                   multi-turn is in flight
+          ▼ true
+   routeToSkill              0. directSkillId  1. structural triggers
+   (orchestrator)            2. embedding top-3  3. confidence gate
+                             4. Haiku tiebreaker  5. general_assistant fallback
+          │
+          ▼
+   dispatchSkill              gate on getV4SkillsEnabled() → null on miss
+   (one LLM call)             minimal context resolver (state forwarded)
+                              one tool_use; handler runs with ctx.state
+          │ null/degraded                  │ success
+          ▼                                ▼
+       fall through to              applyWrites already invoked inside handler;
+       legacy path                  chat.tsx flushes if state._dirty.size > 0
+                                          │
+                                          ▼
+                                    Response + v4Meta badge
+
+═══════════════════════════════════════════════════════
+  INTERACTIVE PATH — PROPOSED (Phase 3+ adds the boxes)
+═══════════════════════════════════════════════════════
 
   User phrase + optional attachments
           │

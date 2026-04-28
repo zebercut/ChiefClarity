@@ -648,6 +648,164 @@ async function run(): Promise<void> {
     assert.strictEqual(skill!.manifest.surface, null);
   });
 
+  // ─── FEAT065 — schema-aware buildToolSchemas ────────────────────────────
+
+  section("FEAT065 — schema-aware buildToolSchemas");
+
+  function writeFixtureSkillWithSchemas(root: string, id: string): void {
+    const dir = path.join(root, id);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, "manifest.json"),
+      JSON.stringify({
+        id,
+        version: "1.0.0",
+        description: `Fixture ${id} skill`,
+        triggerPhrases: ["do the thing"],
+        structuralTriggers: [],
+        model: "haiku",
+        dataSchemas: { read: [], write: [] },
+        supportsAttachments: false,
+        tools: ["submit_priority_ranking", "request_clarification"],
+        autoEvaluate: false,
+        tokenBudget: 5000,
+        promptLockedZones: [],
+        surface: null,
+      })
+    );
+    fs.writeFileSync(path.join(dir, "prompt.md"), "You are a test skill.");
+    fs.writeFileSync(path.join(dir, "context.ts"), `export const contextRequirements = {};\n`);
+    fs.writeFileSync(
+      path.join(dir, "handlers.ts"),
+      `
+exports.submit_priority_ranking = async (args) => ({ success: true, userMessage: "ok", data: args });
+exports.request_clarification = async (args) => ({ success: true, clarificationRequired: true, userMessage: args.question || "?" });
+exports.toolSchemas = {
+  submit_priority_ranking: {
+    name: "submit_priority_ranking",
+    description: "fixture ranking",
+    input_schema: {
+      type: "object",
+      properties: {
+        summary: { type: "string" },
+      },
+      required: ["summary"],
+      additionalProperties: false,
+    },
+  },
+  // Note: request_clarification intentionally omitted to exercise WARN fallback
+};
+`
+    );
+  }
+
+  await test("dispatcher passes declared toolSchemas verbatim to LLM for known tools", async () => {
+    const tmp = setupTmp();
+    try {
+      writeFixtureSkillWithSchemas(tmp, "schema_skill");
+      const registry = await buildFixtureRegistry(tmp);
+      let captured: any = null;
+      const llm: any = {
+        messages: {
+          create: async (input: any) => {
+            captured = input;
+            return {
+              content: [
+                {
+                  type: "tool_use",
+                  name: "submit_priority_ranking",
+                  input: { summary: "ok" },
+                },
+              ],
+            };
+          },
+        },
+      };
+      await dispatchSkill(
+        makeRoute("schema_skill"),
+        "go",
+        {
+          registry,
+          enabledSkillIds: new Set(["schema_skill"]),
+          llmClient: llm,
+        }
+      );
+      assert.ok(captured, "LLM was called");
+      assert.ok(Array.isArray(captured.tools), "tools passed");
+      const ranking = captured.tools.find((t: any) => t.name === "submit_priority_ranking");
+      assert.ok(ranking, "submit_priority_ranking schema passed");
+      assert.strictEqual(ranking.description, "fixture ranking", "schema description preserved");
+      assert.strictEqual(ranking.input_schema.required[0], "summary", "required passed through");
+      assert.strictEqual(
+        ranking.input_schema.additionalProperties,
+        false,
+        "additionalProperties: false preserved"
+      );
+    } finally {
+      teardownTmp(tmp);
+    }
+  });
+
+  await test("dispatcher warns and falls back to permissive schema when toolSchemas[tool] missing", async () => {
+    const tmp = setupTmp();
+    try {
+      writeFixtureSkillWithSchemas(tmp, "schema_skill_b");
+      const registry = await buildFixtureRegistry(tmp);
+      let captured: any = null;
+      const warns: string[] = [];
+      const originalWarn = console.warn;
+      console.warn = (msg: string) => warns.push(msg);
+      try {
+        const llm: any = {
+          messages: {
+            create: async (input: any) => {
+              captured = input;
+              return {
+                content: [
+                  {
+                    type: "tool_use",
+                    name: "request_clarification",
+                    input: { question: "huh?" },
+                  },
+                ],
+              };
+            },
+          },
+        };
+        await dispatchSkill(
+          makeRoute("schema_skill_b"),
+          "go",
+          {
+            registry,
+            enabledSkillIds: new Set(["schema_skill_b"]),
+            llmClient: llm,
+          }
+        );
+      } finally {
+        console.warn = originalWarn;
+      }
+      assert.ok(captured, "LLM was called");
+      const clarif = captured.tools.find((t: any) => t.name === "request_clarification");
+      assert.ok(clarif, "fallback schema for request_clarification was passed");
+      assert.strictEqual(
+        clarif.input_schema.additionalProperties,
+        true,
+        "fallback uses permissive additionalProperties: true"
+      );
+      const warnHit = warns.find(
+        (w) =>
+          w.includes("missing toolSchemas[request_clarification]") &&
+          w.includes("schema_skill_b")
+      );
+      assert.ok(
+        warnHit,
+        "warn message names skill + missing tool: " + JSON.stringify(warns)
+      );
+    } finally {
+      teardownTmp(tmp);
+    }
+  });
+
   // ─── Summary ─────────────────────────────────────────────────────────────
 
   console.log(`\n${passed} passed, ${failed} failed`);

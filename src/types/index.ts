@@ -572,6 +572,16 @@ export interface ChatMessage {
   writeSummary?: WriteSummary[];
   isQuestion?: boolean;
   timestamp: string;
+  /**
+   * FEAT056: set when a v4 skill (not the legacy intent system) handled
+   * this message. Renders as a small badge under the assistant bubble.
+   * Optional — pre-v2.02 messages and legacy-handled messages omit it.
+   */
+  v4Meta?: {
+    skillId: string;
+    confidence: number;
+    routingMethod: "structural" | "direct" | "embedding" | "haiku" | "triage_hint" | "fallback";
+  };
 }
 
 export interface ChatHistory {

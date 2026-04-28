@@ -11,6 +11,7 @@ import {
   StyleSheet,
   NativeSyntheticEvent,
   TextInputKeyPressEventData,
+  Alert,
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import MarkdownText from "../../src/components/MarkdownText";
@@ -26,7 +27,9 @@ import { isFrictionOnCooldown, markFrictionsMentioned } from "../../src/modules/
 import { startTipSession, pickTip, trackFeaturesUsage } from "../../src/modules/tips";
 import { getUnshownNudges, dismissNudge } from "../../src/modules/nudges";
 import type { Nudge } from "../../src/modules/proactiveEngine";
-import { classifyIntentWithFallback } from "../../src/modules/router";
+import { classifyIntentWithFallback, routeToSkill } from "../../src/modules/router";
+import { dispatchSkill } from "../../src/modules/skillDispatcher";
+import { shouldTryV4 } from "../../src/modules/v4Gate";
 import { assembleContext } from "../../src/modules/assembler";
 import { runTriage, learnScopePreference } from "../../src/modules/triage";
 import type { TriageResult } from "../../src/modules/triage";
@@ -384,6 +387,69 @@ export default function ChatScreen() {
       // Stage 1: Triage (regex fast-path or Haiku call)
       const conversationSummary = conversation.slice(-6).map((t) => `${t.role}: ${t.content.slice(0, 100)}`).join("\n");
       const triage = await runTriage(phrase, conversationSummary, s.hotContext, s);
+
+      // ── FEAT056: v4 skill dispatch — runs AFTER triage but BEFORE
+      // triage's canHandle/needsClarification short-circuits. Triage's
+      // emotional/friction detection is preserved (it ran above), but
+      // v4 skills get first crack at handling the phrase before triage
+      // can refuse it ("can't do that") or demand clarification.
+      // The gate keeps legacy as the only path when v4 is disabled,
+      // when pending-context multi-turn is in flight, or when triage
+      // already locked an intent (fast path). See src/modules/v4Gate.ts.
+      if (shouldTryV4({ state: s, triageLegacyIntent: triage.legacyIntent ?? null })) {
+        try {
+          const routeResult = await routeToSkill({
+            phrase,
+            triageLegacyIntent: triage.legacyIntent ?? undefined,
+          });
+          const dispatchResult = await dispatchSkill(routeResult, phrase, { state: s });
+          if (dispatchResult && !dispatchResult.degraded) {
+            // FEAT057: persist any writes the v4 handler made via
+            // executor.applyWrites. The handler mutates state + _dirty but
+            // doesn't flush — flush is the chat surface's responsibility,
+            // matching the legacy path that flushes at end of processPhrase.
+            // Without this, task creates/updates would be lost on restart.
+            if (s._dirty.size > 0) {
+              try {
+                await flush(s);
+              } catch (err: any) {
+                console.error("[chat] v4 flush failed (writes lost):", err);
+                // Don't block render — user already sees the v4 reply.
+                // The error is in the log; next turn will retry.
+              }
+            }
+
+            setMessages((m: Message[]) => [...m, {
+              role: "assistant" as const,
+              content: dispatchResult.userMessage,
+              timestamp: now,
+              isQuestion: dispatchResult.clarificationRequired,
+              // FEAT057: pass through structured items from the skill handler
+              // (used by task_management for query results).
+              items: dispatchResult.items,
+              v4Meta: {
+                skillId: dispatchResult.skillId,
+                confidence: routeResult.confidence,
+                routingMethod: routeResult.routingMethod,
+              },
+            }]);
+            setLoading(false);
+            return; // v4 handled the turn — skip legacy
+          }
+          // null OR degraded → fall through to legacy (silent — see
+          // FEAT056 design review §3.1)
+          if (dispatchResult?.degraded) {
+            console.warn(
+              "[chat] v4 degraded, falling through to legacy:",
+              dispatchResult.degraded.reason
+            );
+          }
+        } catch (err: any) {
+          // Defensive — dispatchSkill is contracted not to throw, but if
+          // it does, fall through to legacy and log loud.
+          console.error("[chat] v4 hook threw — falling through to legacy:", err);
+        }
+      }
 
       // Handle "can't do that"
       if (!triage.canHandle) {
@@ -1090,6 +1156,31 @@ export default function ChatScreen() {
                       );
                     })}
                   </View>
+                )}
+
+                {/* FEAT056: v4 skill badge — shown only when a v4 skill handled this message */}
+                {msg.role === "assistant" && msg.v4Meta && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      const meta = msg.v4Meta!;
+                      Alert.alert(
+                        `via ${meta.skillId}`,
+                        `Confidence: ${meta.confidence.toFixed(2)}\nMethod: ${meta.routingMethod}`,
+                        [
+                          { text: "This didn't help", onPress: () => {
+                            // FEAT066 (Phase 6) wires this to the feedback pipeline.
+                            // For v2.02, just log a structured entry.
+                            console.log(`[chat] feedback: not-useful skill=${meta.skillId} method=${meta.routingMethod}`);
+                          }},
+                          { text: "OK", style: "cancel" },
+                        ]
+                      );
+                    }}
+                  >
+                    <Text style={[s.timestamp, { color: theme.textMuted, fontStyle: "italic" }]}>
+                      via {msg.v4Meta.skillId}
+                    </Text>
+                  </TouchableOpacity>
                 )}
 
                 <Text style={[s.timestamp, { color: theme.textMuted }]}>{formatTimestamp(msg.timestamp)}</Text>

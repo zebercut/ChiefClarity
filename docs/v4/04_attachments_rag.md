@@ -4,6 +4,13 @@ The system accepts files, links, and pasted content as inputs. RAG is applied
 selectively based on the attachment's lifetime and the skill's declared needs.
 Zero LLM calls during ingestion (except the optional one-time batch summarizer).
 
+**Status (FEAT067 unblock):** The query-side embedder now runs on the web
+bundle via the in-browser xenova/onnxruntime-web WASM path. RAG (FEAT068) was
+blocked on the missing web embedder and is now buildable on the same surface
+the user runs the app on. Index-side and query-side both pin
+`MODEL_ID = "Xenova/all-MiniLM-L6-v2"` (384-dim) — change `MODEL_ID` to force
+re-indexing.
+
 ---
 
 ## 1. Attachment lifetimes

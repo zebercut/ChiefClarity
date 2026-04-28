@@ -1,0 +1,24 @@
+{
+  "id": "FEAT058",
+  "title": "notes_capture skill (free-form note capture, second batch-1 migration)",
+  "category": "Architecture",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v2.02",
+  "createdAt": "2026-04-27T12:25:56.220Z",
+  "updatedAt": "2026-04-27T12:42:49.312Z",
+  "tags": [
+    "skill-migration",
+    "notes",
+    "batch-1",
+    "template-validation"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

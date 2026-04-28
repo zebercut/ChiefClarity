@@ -9,12 +9,15 @@
  * Breaking changes here ripple to all consumers.
  */
 
+import type { IntentType } from "./index";
+
 export type RoutingMethod =
-  | "structural"  // slash command or directly named skill via structuralTriggers
-  | "direct"      // button event passed a skillId
-  | "embedding"   // top-1 score above threshold + gap above threshold
-  | "haiku"       // tiebreaker resolved an ambiguous case
-  | "fallback";   // no skill above fallback threshold → general_assistant
+  | "structural"   // slash command or directly named skill via structuralTriggers
+  | "direct"       // button event passed a skillId
+  | "embedding"    // top-1 score above threshold + gap above threshold
+  | "haiku"        // tiebreaker resolved an ambiguous case
+  | "triage_hint"  // FEAT066: triage's pre-classified intent mapped to a skill
+  | "fallback";    // no skill above fallback threshold → general_assistant
 
 export interface RouteResult {
   skillId: string;
@@ -41,6 +44,12 @@ export interface RouteInput {
    * `daily_planning`).
    */
   directSkillId?: string;
+  /**
+   * FEAT066: Triage's pre-classified intent (regex fast-path or Haiku).
+   * When set and mapped to a registered+enabled skill, routeToSkill returns
+   * that skill via "triage_hint" before the structural ladder runs.
+   */
+  triageLegacyIntent?: IntentType;
 }
 
 /**
@@ -60,4 +69,10 @@ export interface SkillDispatchResult {
   clarificationRequired?: boolean;
   /** Set when the dispatcher degraded gracefully (e.g., LLM throw). */
   degraded?: { reason: string };
+  /**
+   * FEAT057: structured items the skill produced (e.g. task_query
+   * results). Pass-through from `handlerResult.items`. The chat surface
+   * renders these via the existing ItemListCard.
+   */
+  items?: import("./index").ActionItem[];
 }

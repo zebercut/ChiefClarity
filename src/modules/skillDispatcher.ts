@@ -29,6 +29,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { MODEL_HEAVY, MODEL_LIGHT, isCircuitOpen, getClient } from "./llm";
 import { loadSkillRegistry } from "./skillRegistry";
 import { getV4SkillsEnabled } from "./router";
+import { fnv1a64Hex } from "../utils/fnv1a";
 import type {
   RouteResult,
   SkillDispatchResult,
@@ -130,7 +131,7 @@ export async function dispatchSkill(
 
   let handlerResult: any;
   try {
-    handlerResult = await handler(toolArgs, { phrase, skillId: skill.manifest.id });
+    handlerResult = await handler(toolArgs, { phrase, skillId: skill.manifest.id, state: options.state });
   } catch (err: any) {
     return degradedAndLog(skill, phrase, `handler "${toolName}" threw: ${err?.message ?? err}`);
   }
@@ -143,6 +144,9 @@ export async function dispatchSkill(
       ? handlerResult.userMessage
       : "(no message)",
     clarificationRequired: Boolean(handlerResult?.clarificationRequired),
+    // FEAT057: pass through structured items from handler (task_query results,
+    // future topic digests, etc.). Chat surface renders via ItemListCard.
+    items: Array.isArray(handlerResult?.items) ? handlerResult.items : undefined,
   };
   logDispatchDecision(phrase, result);
   return result;
@@ -164,10 +168,12 @@ function logDispatchDecision(phrase: string, result: SkillDispatchResult): void 
   );
 }
 
+// FEAT065 — phrase hashing reuses the FNV-1a helper used by router.ts so
+// dispatcher logs correlate with router logs on every platform (no
+// browser-unhash fallback). Non-cryptographic, used only as an opaque
+// log correlator.
 function sha256First16(s: string): string {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const crypto = require("crypto") as typeof import("crypto");
-  return crypto.createHash("sha256").update(s, "utf8").digest("hex").slice(0, 16);
+  return fnv1a64Hex(s);
 }
 
 // ─── Context resolver (minimal v2.01 version) ──────────────────────────────
@@ -181,8 +187,18 @@ const SUPPORTED_KEYS = new Set([
   "userProfile",
   "objectives",
   "recentTasks",
-  "calendarToday",
-  "calendarNextSevenDays",
+  "calendarToday",          // FEAT055 declared, FEAT059 actually computes
+  "calendarNextSevenDays",  // FEAT055 declared, FEAT059 actually computes
+  // FEAT057 — task_management context keys (also reusable by FEAT058+)
+  "tasksIndex",
+  "contradictionIndexDates",
+  "topicList",
+  "existingTopicHints",
+  "userToday",
+  // FEAT059 — calendar_management
+  "calendarEvents",
+  // FEAT063 — emotional_checkin
+  "recentEmotionalState",
 ]);
 
 function resolveContext(
@@ -207,14 +223,109 @@ function resolveContext(
     }
     if (declared === false || declared == null) continue;
 
-    // For v2.01 the resolver does a flat lookup against `state`. State shape
-    // assumed to mirror the requirement key names. Tests inject a fixture
-    // state that matches.
-    if (key in s) {
-      result[key] = s[key];
+    // FEAT057 — compute keys that need helper functions; pure flat lookup
+    // for the rest. Each branch is defensive: if the helper or state is
+    // missing the expected sub-shape, return undefined and let the prompt
+    // handle missing context.
+    try {
+      const value = computeContextValue(key, s);
+      if (value !== undefined) result[key] = value;
+    } catch (err: any) {
+      console.warn(`[skillDispatcher] resolver failed for "${key}": ${err?.message ?? err}`);
     }
   }
   return result;
+}
+
+/**
+ * Per-key computation for the v2.01/v2.02 minimal resolver. The full
+ * Assembler in Phase 3 replaces this with a policy-aware version.
+ */
+function computeContextValue(key: string, state: Record<string, unknown>): unknown {
+  switch (key) {
+    case "tasksIndex": {
+      // Lazy import to keep dispatcher → assembler edge minimal.
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { buildTaskIndex } = require("./assembler") as typeof import("./assembler");
+      return buildTaskIndex(state as any);
+    }
+    case "contradictionIndexDates": {
+      const ci = state.contradictionIndex as { byDate?: unknown } | undefined;
+      return ci?.byDate;
+    }
+    case "topicList": {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { buildTopicList } = require("./topicManager") as typeof import("./topicManager");
+      const tm = state.topicManifest as Parameters<typeof buildTopicList>[0] | undefined;
+      return tm ? buildTopicList(tm) : undefined;
+    }
+    case "existingTopicHints": {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { getExistingHints } = require("./topicManager") as typeof import("./topicManager");
+      const tm = state.topicManifest as Parameters<typeof getExistingHints>[0] | undefined;
+      const cm = state.contextMemory as { facts?: Parameters<typeof getExistingHints>[1] } | undefined;
+      return tm ? getExistingHints(tm, cm?.facts ?? []) : undefined;
+    }
+    case "userToday": {
+      const hc = state.hotContext as { today?: string } | undefined;
+      return hc?.today;
+    }
+    // FEAT059 — calendar branches. Use exported getActiveEvents for
+    // consistent filter semantics (skip cancelled/archived/undated/past).
+    case "calendarEvents": {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { getActiveEvents } = require("./assembler") as typeof import("./assembler");
+      return getActiveEvents(state as any);
+    }
+    case "calendarToday": {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { getActiveEvents } = require("./assembler") as typeof import("./assembler");
+      const today = (state.hotContext as { today?: string } | undefined)?.today;
+      if (!today) return [];
+      return getActiveEvents(state as any).filter((e: any) =>
+        typeof e.datetime === "string" && e.datetime.slice(0, 10) === today
+      );
+    }
+    case "calendarNextSevenDays": {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { getActiveEvents } = require("./assembler") as typeof import("./assembler");
+      const today = (state.hotContext as { today?: string } | undefined)?.today;
+      if (!today) return [];
+      // ISO date arithmetic: today through today+6 inclusive (7-day window).
+      const startD = new Date(today + "T00:00:00Z");
+      const endD = new Date(startD);
+      endD.setUTCDate(endD.getUTCDate() + 6);
+      const endISO = endD.toISOString().slice(0, 10);
+      return getActiveEvents(state as any).filter((e: any) => {
+        const d = typeof e.datetime === "string" ? e.datetime.slice(0, 10) : "";
+        return d >= today && d <= endISO;
+      });
+    }
+    // FEAT063 — emotional_checkin. 7-day window, capped at 5 most-recent
+    // entries. Empty-state safe (returns [] when userObservations or its
+    // emotionalState sub-array is missing).
+    case "recentEmotionalState": {
+      const today = (state.hotContext as { today?: string } | undefined)?.today;
+      const obs = (state as { userObservations?: { emotionalState?: unknown } })
+        .userObservations?.emotionalState;
+      if (!Array.isArray(obs) || !today) return [];
+      const cutoff = new Date(today + "T00:00:00Z");
+      cutoff.setUTCDate(cutoff.getUTCDate() - 6);
+      const cutoffISO = cutoff.toISOString().slice(0, 10);
+      const filtered = (obs as Array<{ date?: unknown; observation?: unknown }>)
+        .filter(
+          (e) =>
+            typeof e?.date === "string" &&
+            (e.date as string) >= cutoffISO &&
+            (e.date as string) <= today
+        )
+        .sort((a, b) => ((a.date as string) < (b.date as string) ? 1 : -1));
+      return filtered.slice(0, 5);
+    }
+    // Flat lookup for the rest
+    default:
+      return key in state ? state[key] : undefined;
+  }
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -237,20 +348,26 @@ function buildUserMessage(phrase: string, context: Record<string, unknown>): str
 }
 
 function buildToolSchemas(skill: LoadedSkill) {
-  // Minimal tool schemas — for v2.01 the dispatcher exposes each declared
-  // tool with a permissive input_schema (object with no required props).
-  // Each skill's prompt names the args it expects; the LLM follows the
-  // prompt rather than relying on the schema. The full schema-per-tool
-  // model lands when we have a tool registry (FEAT080).
-  return skill.manifest.tools.map((toolName) => ({
-    name: toolName,
-    description: `Tool exported by ${skill.manifest.id} skill.`,
-    input_schema: {
-      type: "object" as const,
-      properties: {},
-      additionalProperties: true,
-    },
-  }));
+  return skill.manifest.tools.map((toolName) => {
+    const schema = skill.toolSchemas?.[toolName];
+    if (schema) return schema;
+    // TODO(FEAT-future): downgrade this WARN to a hard error once all skills
+    // declare toolSchemas in production for one release cycle. Tracking in
+    // v2.03 backlog (per FEAT065 design review §10 / condition 8).
+    console.warn(
+      `[skillDispatcher] skill "${skill.manifest.id}" missing toolSchemas[${toolName}] — ` +
+      `falling back to permissive empty schema. LLM may emit empty args.`
+    );
+    return {
+      name: toolName,
+      description: `Tool exported by ${skill.manifest.id} skill.`,
+      input_schema: {
+        type: "object" as const,
+        properties: {},
+        additionalProperties: true,
+      },
+    };
+  });
 }
 
 function degradedAndLog(skill: LoadedSkill, phrase: string, reason: string): SkillDispatchResult {

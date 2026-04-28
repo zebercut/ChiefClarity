@@ -12,6 +12,17 @@
  * Breaking changes here ripple to all of the above.
  */
 
+import type Anthropic from "@anthropic-ai/sdk";
+
+/**
+ * FEAT065 — Project-owned alias for the Anthropic SDK tool schema shape.
+ *
+ * Skills declare per-tool schemas as `Record<string, SkillTool>`. The alias
+ * decouples skill code from the SDK package boundary so a future SDK upgrade
+ * ripples through this single re-export rather than every skill file.
+ */
+export type SkillTool = Anthropic.Messages.Tool;
+
 /**
  * Forward-declared placeholders. These shapes will grow as the skill system
  * matures (FEAT080/081 add real fields per migrated intent; FEAT051 wires the
@@ -24,7 +35,7 @@ export interface ContextRequirements {
 
 export type ToolHandler = (
   args: Record<string, unknown>,
-  ctx: Record<string, unknown>
+  ctx: { phrase: string; skillId: string; state?: unknown }
 ) => Promise<unknown>;
 
 export type ModelTier = "haiku" | "sonnet";
@@ -116,6 +127,15 @@ export interface LoadedSkill {
   contextRequirements: ContextRequirements;
   /** Named exports of handlers.ts that match manifest.tools. */
   handlers: Record<string, ToolHandler>;
+  /**
+   * FEAT065 — per-tool JSON schemas declared by the skill, keyed by tool name.
+   * Each entry mirrors the Anthropic SDK `Tool` shape. The dispatcher passes
+   * these to `messages.create` so the LLM emits args matching the declared
+   * schema instead of guessing from prompt text. Empty object when the skill
+   * has not yet declared schemas — the dispatcher warns and falls back to a
+   * permissive empty schema in that case.
+   */
+  toolSchemas?: Record<string, SkillTool>;
   /**
    * Description embedding. Null means embedding hasn't been computed yet
    * (lazy on first findSkillsByEmbedding call) — happens on platforms where

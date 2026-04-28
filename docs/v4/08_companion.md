@@ -9,6 +9,16 @@ collapses into the standard skill + sensor + proactive pattern — same plumbing
 every other capability — with two safety-driven exceptions: a **locked prompt zone**
 and a **higher model floor**.
 
+> **Status:** Companion skill itself (FEAT072) is still proposed — not shipped.
+> The `emotional_checkin` skill that shipped in v2.02 (FEAT063) is a narrower,
+> companion-adjacent skill: it captures short emotional disclosures verbatim
+> into `userObservations.emotionalState` and uses a locked safety zone for
+> crisis signals, but it stays at Haiku tier with no mood/friction sensors,
+> no proactive check-ins, no Sonnet deep-tier path, and a single tool. It
+> proved out the locked-zone mechanism end-to-end (the first shipped
+> `promptLockedZones` skill); the full companion skill builds on the same
+> mechanism and adds the rest.
+
 ---
 
 ## 1. Shape

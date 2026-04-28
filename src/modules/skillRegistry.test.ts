@@ -789,6 +789,117 @@ async function run(): Promise<void> {
     }
   });
 
+  // ─── FEAT065 — toolSchemas threading ─────────────────────────────────────
+
+  section("FEAT065 — toolSchemas threading");
+
+  await test("loadFromFs threads toolSchemas named export through LoadedSkill", async () => {
+    const tmp = setupTmp();
+    try {
+      _resetSkillRegistryForTests();
+      writeSkill(tmp, "schema_skill", {
+        manifest: validManifest("schema_skill", { tools: ["doThing"] }),
+        prompt: VALID_PROMPT,
+        context: VALID_CONTEXT,
+        handlers:
+          VALID_HANDLERS +
+          `
+exports.toolSchemas = {
+  doThing: {
+    name: "doThing",
+    description: "test schema",
+    input_schema: {
+      type: "object",
+      properties: { reply: { type: "string" } },
+      required: ["reply"],
+      additionalProperties: false,
+    },
+  },
+};
+`,
+      });
+      const reg = await loadSkillRegistry({ skillsDir: tmp });
+      const s = reg.getSkill("schema_skill");
+      assert.ok(s, "skill should load");
+      assert.ok(s!.toolSchemas, "toolSchemas should be populated");
+      const schema: any = s!.toolSchemas!["doThing"];
+      assert.ok(schema, "doThing schema present");
+      assert.strictEqual(schema.name, "doThing");
+      assert.strictEqual(
+        (schema.input_schema as { additionalProperties?: unknown }).additionalProperties,
+        false
+      );
+    } finally {
+      teardownTmp(tmp);
+    }
+  });
+
+  await test("loadFromFs defaults toolSchemas to {} when handlers.ts has no export", async () => {
+    const tmp = setupTmp();
+    try {
+      _resetSkillRegistryForTests();
+      writeSkill(tmp, "no_schema_skill", {
+        manifest: validManifest("no_schema_skill", { tools: ["doThing"] }),
+        prompt: VALID_PROMPT,
+        context: VALID_CONTEXT,
+        handlers: VALID_HANDLERS,
+      });
+      const reg = await loadSkillRegistry({ skillsDir: tmp });
+      const s = reg.getSkill("no_schema_skill");
+      assert.ok(s, "skill should load");
+      assert.deepStrictEqual(s!.toolSchemas, {}, "toolSchemas defaults to {}");
+    } finally {
+      teardownTmp(tmp);
+    }
+  });
+
+  await test("bundle path: every production skill exposes toolSchemas for every declared tool", async () => {
+    _resetSkillRegistryForTests();
+    // Pre-populate cache so embedder doesn't run.
+    const skillsDir = "src/skills";
+    const cachePath = path.join(skillsDir, ".embedding_cache.json");
+    const cache: Record<string, { manifestMtimeMs: number; embedding: number[] }> = fs.existsSync(cachePath)
+      ? (JSON.parse(fs.readFileSync(cachePath, "utf-8")) as any)
+      : {};
+    let cacheMutated = false;
+    const expectedSkillIds = [
+      "calendar_management",
+      "emotional_checkin",
+      "general_assistant",
+      "inbox_triage",
+      "notes_capture",
+      "priority_planning",
+      "task_management",
+    ];
+    for (const id of expectedSkillIds) {
+      const m = path.join(skillsDir, id, "manifest.json");
+      if (!fs.existsSync(m)) continue;
+      if (!cache[id]) {
+        cache[id] = {
+          manifestMtimeMs: fs.statSync(m).mtimeMs,
+          embedding: new Array(384).fill(0).map((_, i) => (i === 0 ? 1 : 0)),
+        };
+        cacheMutated = true;
+      }
+    }
+    if (cacheMutated) fs.writeFileSync(cachePath, JSON.stringify(cache));
+    const reg = await loadSkillRegistry();
+    for (const id of expectedSkillIds) {
+      const s = reg.getSkill(id);
+      assert.ok(s, `${id} loaded from bundle`);
+      assert.ok(s!.toolSchemas, `${id} has toolSchemas`);
+      for (const toolName of s!.manifest.tools) {
+        const schema: any = s!.toolSchemas![toolName];
+        assert.ok(schema, `${id} has schema for ${toolName}`);
+        assert.strictEqual(schema.name, toolName, `${id}/${toolName} name matches`);
+        const props = (schema.input_schema as { properties?: unknown }).properties;
+        assert.ok(props && typeof props === "object", `${id}/${toolName} has properties`);
+        const addl = (schema.input_schema as { additionalProperties?: unknown }).additionalProperties;
+        assert.strictEqual(addl, false, `${id}/${toolName} top-level additionalProperties: false`);
+      }
+    }
+  });
+
   // ─── Summary ─────────────────────────────────────────────────────────────
 
   // Output format must match the regex used by scripts/run-tests.js

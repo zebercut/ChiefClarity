@@ -1,0 +1,29 @@
+{
+  "id": "calendar_management",
+  "version": "1.0.0",
+  "description": "Schedule, reschedule, cancel, and query calendar events. Handles 'schedule a meeting', 'book a call', 'reschedule the standup', 'cancel Tuesday's meeting', 'what's on my calendar today', 'am I free Friday'. NEVER creates recurring events as calendar entries — those belong to the recurring-task handler.",
+  "triggerPhrases": [
+    "schedule a meeting",
+    "book a meeting",
+    "set up a call",
+    "reschedule",
+    "cancel the meeting",
+    "what's on my calendar",
+    "what do I have today",
+    "am I free",
+    "do I have anything",
+    "block off time"
+  ],
+  "structuralTriggers": ["/cal", "/event", "schedule", "meeting", "appointment", "calendar", "book", "reschedule"],
+  "model": "haiku",
+  "dataSchemas": {
+    "read": ["calendar", "tasks", "topics", "objectives"],
+    "write": ["calendar"]
+  },
+  "supportsAttachments": false,
+  "tools": ["submit_calendar_action"],
+  "autoEvaluate": true,
+  "tokenBudget": 3000,
+  "promptLockedZones": [],
+  "surface": null
+}

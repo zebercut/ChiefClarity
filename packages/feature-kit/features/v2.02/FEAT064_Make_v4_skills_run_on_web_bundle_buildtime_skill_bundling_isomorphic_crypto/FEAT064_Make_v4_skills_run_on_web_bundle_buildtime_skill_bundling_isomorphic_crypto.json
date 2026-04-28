@@ -1,0 +1,25 @@
+{
+  "id": "FEAT064",
+  "title": "Make v4 skills run on web bundle (build-time skill bundling + isomorphic crypto)",
+  "category": "Architecture",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v2.02",
+  "createdAt": "2026-04-27T22:21:24.060Z",
+  "updatedAt": "2026-04-27T23:07:28.691Z",
+  "tags": [
+    "skill-architecture",
+    "v4",
+    "web-support",
+    "build-system",
+    "isomorphic-crypto"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

@@ -1,0 +1,25 @@
+{
+  "id": "FEAT066",
+  "title": "Use triage's intent classification as primary v4 routing signal",
+  "category": "Architecture/Bug Fix",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v2.02",
+  "createdAt": "2026-04-28T01:57:39.743Z",
+  "updatedAt": "2026-04-28T02:30:43.030Z",
+  "tags": [
+    "skill-routing",
+    "v4",
+    "triage",
+    "production-bug",
+    "real-llm-smoke"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

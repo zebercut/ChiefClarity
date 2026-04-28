@@ -1,0 +1,24 @@
+{
+  "id": "FEAT057",
+  "title": "Migrate task_management intents (task_create + task_update + task_query) to v4 skill",
+  "category": "Architecture",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v2.02",
+  "createdAt": "2026-04-27T10:21:50.487Z",
+  "updatedAt": "2026-04-27T10:41:43.373Z",
+  "tags": [
+    "skill-migration",
+    "task-management",
+    "crud",
+    "first-real-migration"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

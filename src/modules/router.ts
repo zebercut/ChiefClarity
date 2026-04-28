@@ -222,6 +222,7 @@ export async function classifyIntentWithFallback(
 
 import type { RouteInput, RouteResult } from "../types/orchestrator";
 import { loadSkillRegistry } from "./skillRegistry";
+import { fnv1a64Hex } from "../utils/fnv1a";
 
 /** Confidence above which top-1 wins outright (no tiebreaker). */
 export const HIGH_THRESHOLD = 0.80;
@@ -231,6 +232,54 @@ export const GAP_THRESHOLD = 0.15;
 export const FALLBACK_THRESHOLD = 0.40;
 /** Skill id used when no installed skill matches well enough. */
 export const FALLBACK_SKILL_ID = "general_assistant";
+
+/**
+ * FEAT066 — Static map from triage's `legacyIntent` to a v4 skill id.
+ * The router consults this BEFORE the structural matcher when the caller
+ * passes `triageLegacyIntent`. Triage is the highest-quality pre-router
+ * classification signal (regex fast-path + Haiku tiebreaker), so when it
+ * has classified the phrase we route on that classification rather than
+ * re-deriving intent from a single-token structural compare or an
+ * embedding (which is unavailable on web per FEAT064).
+ *
+ * Entries with no migrated skill (`okr_update`, `topic_query`, `topic_note`)
+ * are intentionally absent — they fall through to the existing ladder so
+ * the missing-capability state stays visible.
+ *
+ * Forward-compat note: `task_query`, `calendar_query`, `info_lookup`,
+ * `learning`, `feedback`, `suggestion_request` are kept here even though
+ * triage doesn't currently emit them — wiring is ready when triage gains
+ * a fast-path for these.
+ */
+export const TRIAGE_INTENT_TO_SKILL: Partial<Record<IntentType, string>> = {
+  task_create: "task_management",
+  task_update: "task_management",
+  task_query: "task_management",         // forward-compat (triage doesn't emit today)
+  calendar_create: "calendar_management",
+  calendar_update: "calendar_management",
+  calendar_query: "calendar_management", // forward-compat
+  emotional_checkin: "emotional_checkin",
+  // dead via chat surface today — kept for forward compat; emitted via inbox.ts processBundle, not chat-surface routing. See FEAT066 §4.
+  bulk_input: "inbox_triage",
+  full_planning: "priority_planning",
+  general: "general_assistant",
+  info_lookup: "general_assistant",        // forward-compat
+  learning: "general_assistant",           // forward-compat
+  feedback: "general_assistant",           // forward-compat
+  suggestion_request: "general_assistant", // forward-compat
+  // okr_update / topic_query / topic_note: intentionally absent (no migrated skill)
+};
+
+/**
+ * FEAT066 — Module-level cache so we only emit a "mapped to unknown skill"
+ * warn once per skill id. Reset by `_resetTriageHintWarnCacheForTests()`.
+ */
+const _triageHintMissingWarnCache = new Set<string>();
+
+/** Test-only: clear the warn-once cache between cases. */
+export function _resetTriageHintWarnCacheForTests(): void {
+  _triageHintMissingWarnCache.clear();
+}
 
 /**
  * Skills enabled for the v4 routing path. Empty means v4 routing is disabled
@@ -269,12 +318,13 @@ export interface RouteOptions {
  * Pick the skill that should handle this phrase.
  *
  * Sequential pipeline (each step short-circuits on hit):
- *   0. directSkillId set → return directly
- *   1. phrase starts with "/" → exact match against structuralTriggers
- *   2. embed phrase → top-3 skills by cosine similarity
- *   3. confidence gate (top1 ≥ HIGH ∧ gap ≥ GAP) → return top-1
- *   4. tiebreaker (Haiku ~80 tokens) → returns one of top-3
- *   5. fallback → general_assistant (or top-1 with warning if missing)
+ *   0.  directSkillId set → return directly
+ *   1a. triage hint (FEAT066) → mapped+registered+enabled → return
+ *   1.  phrase starts with "/" → exact match against structuralTriggers
+ *   2.  embed phrase → top-3 skills by cosine similarity
+ *   3.  confidence gate (top1 ≥ HIGH ∧ gap ≥ GAP) → return top-1
+ *   4.  tiebreaker (Haiku ~80 tokens) → returns one of top-3
+ *   5.  fallback → general_assistant (or top-1 with warning if missing)
  *
  * Never throws. Always returns a RouteResult (skillId may be empty only
  * in the pathological "registry empty AND no fallback skill" case, which
@@ -315,22 +365,84 @@ async function routeToSkillInternal(
 
   const allSkills = registry.getAllSkills();
 
-  // Step 1 — Structural match (exact-string compare on slash command)
-  if (input.phrase.startsWith("/")) {
-    const cmd = input.phrase.split(/\s+/)[0];
-    const matches = allSkills.filter((s) =>
-      s.manifest.structuralTriggers.includes(cmd)
-    );
-    if (matches.length === 1) {
-      return {
-        skillId: matches[0].manifest.id,
-        confidence: 1.0,
-        routingMethod: "structural",
-        candidates: [],
-      };
+  // Step 1a — Triage hint (FEAT066). Use upstream classification when the
+  // mapped skill is registered and enabled. Pre-empts both structural and
+  // embedding when it fires.
+  if (input.triageLegacyIntent) {
+    const mappedSkillId = TRIAGE_INTENT_TO_SKILL[input.triageLegacyIntent];
+    if (mappedSkillId) {
+      const skill = registry.getSkill(mappedSkillId);
+      if (!skill) {
+        // Mapped to a skill the registry doesn't know about — warn once,
+        // then fall through to the existing ladder.
+        if (!_triageHintMissingWarnCache.has(mappedSkillId)) {
+          _triageHintMissingWarnCache.add(mappedSkillId);
+          console.warn(
+            `[router] triage_hint map references unknown skill "${mappedSkillId}" ` +
+            `for intent "${input.triageLegacyIntent}"; falling through`
+          );
+        }
+      } else if (!getV4SkillsEnabled().has(mappedSkillId)) {
+        // Disabled per the rollout knob — silent fall-through.
+      } else {
+        // Speculative structural match for the disagreement-warn.
+        // Pure read; does not mutate the warn-once cache or any state.
+        const firstTok = input.phrase.trim().split(/\s+/)[0] ?? "";
+        if (firstTok.length > 0) {
+          const isSlash = firstTok.startsWith("/");
+          const tokenForMatch = isSlash
+            ? firstTok
+            : firstTok.toLowerCase().replace(/[^a-z0-9_-]+$/u, "");
+          const structuralMatches = allSkills.filter((s) =>
+            s.manifest.structuralTriggers.includes(tokenForMatch)
+          );
+          if (
+            structuralMatches.length === 1 &&
+            structuralMatches[0].manifest.id !== mappedSkillId
+          ) {
+            console.warn(
+              `[router] triage_hint pre-empts structural: ` +
+              `triage=${input.triageLegacyIntent}->${mappedSkillId}, ` +
+              `structural=${structuralMatches[0].manifest.id}, ` +
+              `phrase=${fnv1a64Hex(input.phrase)}`
+            );
+          }
+        }
+        return {
+          skillId: mappedSkillId,
+          confidence: 0.95,
+          routingMethod: "triage_hint",
+          candidates: [],
+        };
+      }
     }
-    // Zero or many matches → fall through to embedding (loader rejects
-    // duplicate triggers, so "many" should be impossible at runtime).
+  }
+
+  // Step 1 — Structural match.
+  // Slash command: exact-string compare on first whitespace-delimited token.
+  // Non-slash: compare the lowercased first token against structuralTriggers
+  // so soft phrases ("feeling stressed", "focus on what matters") still
+  // route correctly when the embedder is unavailable on web.
+  {
+    const firstToken = input.phrase.trim().split(/\s+/)[0] ?? "";
+    if (firstToken.length > 0) {
+      const isSlash = firstToken.startsWith("/");
+      const tokenForMatch = isSlash ? firstToken : firstToken.toLowerCase().replace(/[^a-z0-9_-]+$/u, "");
+      const matches = allSkills.filter((s) =>
+        s.manifest.structuralTriggers.includes(tokenForMatch)
+      );
+      if (matches.length === 1) {
+        return {
+          skillId: matches[0].manifest.id,
+          confidence: 1.0,
+          routingMethod: "structural",
+          candidates: [],
+        };
+      }
+      // Zero or many matches → fall through to embedding (loader rejects
+      // duplicate triggers within a skill, but two skills can claim the
+      // same single-token trigger).
+    }
   }
 
   // Step 2 — Embedding similarity
@@ -443,12 +555,16 @@ function logRoutingDecision(phrase: string, result: RouteResult): void {
   );
 }
 
+/**
+ * Non-cryptographic FNV-1a hash for log correlation. NOT suitable for
+ * integrity. For cryptographic SHA-256, use src/utils/sha256.ts.
+ *
+ * Synchronous and pure JS so logging stays off the async path. The output
+ * shape (16 lowercase hex chars) matches the prior SHA-256-first-16 format —
+ * audit log consumers treat it as an opaque correlator.
+ */
 function sha256First16(s: string): string {
-  // Lazy require to keep this file's import surface minimal.
-  // Using Node's crypto — same module skillRegistry.ts uses for locked-zone hashes.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const crypto = require("crypto") as typeof import("crypto");
-  return crypto.createHash("sha256").update(s, "utf8").digest("hex").slice(0, 16);
+  return fnv1a64Hex(s);
 }
 
 /**

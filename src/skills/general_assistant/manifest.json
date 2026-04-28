@@ -1,0 +1,27 @@
+{
+  "id": "general_assistant",
+  "version": "1.0.0",
+  "description": "Freeform conversational assistant. Handles phrases that don't match a specialized skill (chitchat, opinion questions, meta questions about the assistant itself, simple explanations). Does NOT pretend to perform specialized actions: when the user asks for something a specialized skill should handle (creating a task, scheduling an event, planning the day), this skill politely says so instead of fabricating an action.",
+  "triggerPhrases": [
+    "tell me a joke",
+    "what do you think",
+    "tell me about yourself",
+    "how are you",
+    "what can you do",
+    "explain",
+    "what's the difference between",
+    "help me understand"
+  ],
+  "structuralTriggers": [],
+  "model": "haiku",
+  "dataSchemas": {
+    "read": ["objectives", "userProfile", "recentTasks"],
+    "write": []
+  },
+  "supportsAttachments": false,
+  "tools": ["submit_general_response"],
+  "autoEvaluate": true,
+  "tokenBudget": 3000,
+  "promptLockedZones": [],
+  "surface": null
+}
