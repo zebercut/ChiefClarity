@@ -208,6 +208,20 @@ const FAST_PATH_MAP: Array<[RegExp[], Partial<TriageResult> & { legacyIntent: In
     [/\b(feeling|stressed|frustrated|anxious|overwhelmed|venting|what a day)\b/i],
     { dataSources: ["facts", "observations", "tasks"], complexity: "high", actionType: "chat", legacyIntent: "emotional_checkin" },
   ],
+  // FEAT068 — info_lookup fast-path. Matches "what do you know about X",
+  // "tell me about Y", "what was that thing about Z", "any info on W",
+  // "summarize what I know about Q". The dispatcher's pre-LLM retrieval
+  // hook then fetches top-K chunks from the on-device vector index.
+  [
+    [
+      /^(what (do you know|can you tell me)|tell me) about\b/i,
+      /^what was that (thing|idea) (about|on)\b/i,
+      /^what (about|did i say about)\b/i,
+      /^(any info on|do you know anything about|give me the rundown on)\b/i,
+      /^summarize what i (know|have) (about|on)\b/i,
+    ],
+    { dataSources: ["notes", "topics", "facts"], complexity: "low", actionType: "query", legacyIntent: "info_lookup" },
+  ],
 ];
 
 function tryFastPath(phrase: string): TriageResult | null {

@@ -40,6 +40,98 @@ import type {
   SkillRegistryAPI,
   ToolHandler,
 } from "../types/skills";
+import type { RetrievalHook, RetrievalResult } from "../types/rag";
+
+const DEFAULT_RETRIEVAL_TIMEOUT_MS = 800;
+let _retrievalTimeoutWarnEmitted = false;
+
+/** Test-only: clear the retrieval-timeout warn-once cache. */
+export function _resetRetrievalWarnsForTests(): void {
+  _retrievalTimeoutWarnEmitted = false;
+}
+
+/**
+ * FEAT068 — Validate the manifest's retrievalHook field. Bad shapes
+ * are NOT fatal: WARN once per skill id and treat as absent so the
+ * dispatcher proceeds without retrieval.
+ */
+const _retrievalHookWarnedSkills = new Set<string>();
+function validateRetrievalHook(skill: LoadedSkill): RetrievalHook | null {
+  const raw = (skill.manifest as { retrievalHook?: unknown }).retrievalHook;
+  if (raw === undefined || raw === null) return null;
+  const rh = raw as Partial<RetrievalHook>;
+  const ok =
+    rh &&
+    typeof rh === "object" &&
+    Array.isArray(rh.sources) &&
+    rh.sources.every((s) => typeof s === "string") &&
+    typeof rh.k === "number" &&
+    rh.k > 0 &&
+    typeof rh.minScore === "number" &&
+    typeof rh.minScoreInclude === "number";
+  if (!ok) {
+    if (!_retrievalHookWarnedSkills.has(skill.manifest.id)) {
+      _retrievalHookWarnedSkills.add(skill.manifest.id);
+      console.warn(
+        `[skillDispatcher] skill "${skill.manifest.id}" declares an invalid retrievalHook — treating as absent`
+      );
+    }
+    return null;
+  }
+  return {
+    sources: rh.sources!,
+    k: rh.k!,
+    minScore: rh.minScore!,
+    minScoreInclude: rh.minScoreInclude!,
+    softTimeoutMs:
+      typeof rh.softTimeoutMs === "number" && rh.softTimeoutMs > 0
+        ? rh.softTimeoutMs
+        : DEFAULT_RETRIEVAL_TIMEOUT_MS,
+  };
+}
+
+/**
+ * FEAT068 — Run pre-LLM retrieval against the configured VectorStore
+ * with a soft timeout. On timeout / failure, returns an empty envelope
+ * so the dispatcher continues — the prompt's "no info" branch handles
+ * the empty case.
+ */
+async function runRetrieval(
+  phrase: string,
+  hook: RetrievalHook
+): Promise<{ items: RetrievalResult[]; topScore: number; timedOut: boolean }> {
+  const timeoutMs = hook.softTimeoutMs ?? DEFAULT_RETRIEVAL_TIMEOUT_MS;
+  const work = (async () => {
+    const { retrieveTopK } = await import("./rag/retriever");
+    const items = await retrieveTopK(phrase, {
+      k: hook.k,
+      sources: hook.sources,
+      minScore: hook.minScore,
+    });
+    return { items, topScore: items[0]?.score ?? 0, timedOut: false };
+  })();
+  const timeout = new Promise<{ items: RetrievalResult[]; topScore: number; timedOut: boolean }>(
+    (resolve) => {
+      setTimeout(
+        () => resolve({ items: [], topScore: 0, timedOut: true }),
+        timeoutMs
+      );
+    }
+  );
+  try {
+    const result = await Promise.race([work, timeout]);
+    if (result.timedOut && !_retrievalTimeoutWarnEmitted) {
+      _retrievalTimeoutWarnEmitted = true;
+      console.warn(
+        `[skillDispatcher] retrieval soft-timeout (${timeoutMs}ms) — proceeding with empty retrievedKnowledge`
+      );
+    }
+    return result;
+  } catch (err: any) {
+    console.warn(`[skillDispatcher] retrieval threw: ${err?.message ?? err}`);
+    return { items: [], topScore: 0, timedOut: false };
+  }
+}
 
 // ─── Public API ────────────────────────────────────────────────────────────
 
@@ -84,6 +176,41 @@ export async function dispatchSkill(
 
   // 3. Build context
   const context = resolveContext(skill.contextRequirements, options.state);
+
+  // 3b. FEAT068 — Pre-LLM retrieval hook. When the manifest declares
+  // `retrievalHook`, embed the phrase, fetch top-K from the configured
+  // VectorStore, and inject results under `retrievedKnowledge` so the
+  // skill prompt can cite the user's own knowledge. Soft 800ms timeout
+  // on the retrieval call: on miss, we proceed with empty results and
+  // the prompt's "no info" branch fires. Bad-shape hooks are treated
+  // as absent (validateRetrievalHook WARNs and returns null).
+  let retrievedItems: RetrievalResult[] = [];
+  const retrievalHook = validateRetrievalHook(skill);
+  if (retrievalHook) {
+    const r = await runRetrieval(phrase, retrievalHook);
+    retrievedItems = r.items;
+    // FEAT068 — partial flag: when the backfill is still running we decorate
+    // retrievalMeta so the prompt / handler can warn the user the answer
+    // may be incomplete. Read non-fatally — a missing module / error here
+    // must NOT block dispatch.
+    let partial = false;
+    try {
+      const { getRagBackfillStatus } = await import("./rag/backfill");
+      partial = getRagBackfillStatus().state === "running";
+    } catch {
+      // Backfill module unavailable (e.g., bundling edge case) — treat as not partial.
+    }
+    (context as Record<string, unknown>).retrievedKnowledge = retrievedItems;
+    (context as Record<string, unknown>).retrievalMeta = {
+      topScore: Number(r.topScore.toFixed(4)),
+      count: retrievedItems.length,
+      timedOut: r.timedOut,
+      partial,
+    };
+    console.log(
+      `[skillDispatcher] retrieved=${retrievedItems.length} topScore=${r.topScore.toFixed(2)} skill=${skill.manifest.id}${partial ? " partial=true" : ""}`
+    );
+  }
 
   // 4. LLM call
   const llm = options.llmClient ?? getClient();

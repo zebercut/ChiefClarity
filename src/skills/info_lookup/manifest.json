@@ -1,0 +1,35 @@
+{
+  "id": "info_lookup",
+  "version": "1.0.0",
+  "description": "Retrieve and synthesize knowledge from the user's own notes, topic pages, and context-memory facts in response to 'what do you know about X', 'tell me about Y', 'what about Z', 'any info on W' phrasings. Pre-LLM retrieval pulls the top semantically-similar chunks from the on-device vector index; the prompt cites the source ('from your notes', 'you mentioned in topic Y') and never fabricates content not present in the retrieved chunks.",
+  "triggerPhrases": [
+    "what do you know about",
+    "tell me about",
+    "what about",
+    "what was that thing",
+    "what did I say about",
+    "any info on",
+    "give me the rundown on",
+    "summarize what I know about",
+    "what can you tell me about",
+    "do you know anything about"
+  ],
+  "structuralTriggers": [],
+  "model": "haiku",
+  "dataSchemas": {
+    "read": [],
+    "write": []
+  },
+  "supportsAttachments": false,
+  "tools": ["submit_info_lookup"],
+  "autoEvaluate": true,
+  "tokenBudget": 4000,
+  "promptLockedZones": [],
+  "surface": null,
+  "retrievalHook": {
+    "sources": ["note", "topic", "contextMemory"],
+    "k": 5,
+    "minScore": 0.25,
+    "minScoreInclude": 0.40
+  }
+}

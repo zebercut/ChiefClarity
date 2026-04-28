@@ -574,6 +574,13 @@ function validateManifest(raw: unknown): SkillManifest {
     };
   }
 
+  // FEAT068 — Pass through `retrievalHook` if present. Shape validation
+  // happens at dispatch time (`skillDispatcher.validateRetrievalHook`):
+  // bad shapes WARN once and degrade to "no retrieval" rather than
+  // failing manifest load. Keeping the validation downstream means a
+  // misconfigured `retrievalHook` doesn't take the whole skill offline.
+  const retrievalHook = r.retrievalHook;
+
   return {
     id: r.id as string,
     version: r.version as string,
@@ -593,6 +600,7 @@ function validateManifest(raw: unknown): SkillManifest {
     tokenBudget: r.tokenBudget,
     promptLockedZones: r.promptLockedZones as string[],
     surface,
+    ...(retrievalHook !== undefined ? { retrievalHook: retrievalHook as SkillManifest["retrievalHook"] } : {}),
   };
 }
 

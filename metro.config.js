@@ -16,6 +16,11 @@ config.resolver.blockList = [
   ...(config.resolver.blockList ? [config.resolver.blockList] : []),
   /src[/\\]db[/\\].*/,
   /src[/\\]modules[/\\]embeddings[/\\](indexer|retriever|linker|background-indexer)\.ts$/,
+  // FEAT068 — LibsqlVectorStore imports db/queries/* (Node-only).
+  // Factory lazy-imports it only when isNode(); blocking here keeps the
+  // web bundle from pulling libSQL transitively. The IndexedDB backend
+  // (store-indexeddb.ts) is the web/Capacitor path.
+  /src[/\\]modules[/\\]rag[/\\]store-libsql\.ts$/,
   /node_modules[/\\]@libsql[/\\].*/,
   /node_modules[/\\]googleapis[/\\].*/,
 ];

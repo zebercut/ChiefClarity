@@ -1,0 +1,27 @@
+{
+  "id": "FEAT068",
+  "title": "RAG-based info_lookup skill",
+  "category": "Architecture/Migration",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v2.02",
+  "createdAt": "2026-04-28T10:16:44.476Z",
+  "updatedAt": "2026-04-28T11:15:25.159Z",
+  "tags": [
+    "skill-migration",
+    "v4",
+    "rag",
+    "vector-store",
+    "indexeddb",
+    "info-lookup",
+    "real-llm-smoke"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

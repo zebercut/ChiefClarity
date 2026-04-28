@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-04-28T10:00:48.935Z",
-  "count": 51,
+  "generatedAt": "2026-04-28T11:15:25.186Z",
+  "count": 52,
   "features": [
     {
       "id": "FEAT021",
@@ -485,6 +485,26 @@
         "xenova",
         "routing",
         "rag-prep"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT068",
+      "title": "RAG-based info_lookup skill",
+      "category": "Architecture/Migration",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "skill-migration",
+        "v4",
+        "rag",
+        "vector-store",
+        "indexeddb",
+        "info-lookup",
+        "real-llm-smoke"
       ],
       "type": "feature",
       "complexity": null

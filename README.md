@@ -17,6 +17,7 @@ You talk to Chief Clarity in natural language. It manages your tasks, calendar, 
 - **Topic Repository** — organize notes and knowledge by topic. Facts auto-tag with topic hints, and when a theme repeats 3+ times the system suggests creating a dedicated topic. Topics UI page with search, pagination, and detail view showing linked tasks, events, OKR connections, and insights. Daily planning is topic-aware: the assembler cross-references topics to items and the LLM emits a per-topic digest in the focus brief
 - **Autonomous Runner** — headless scheduler generates plans, processes inbox, creates recurring tasks, and writes nudges — works even when the app is closed. Hot-reloads schedule changes from chat.
 - **Encryption at Rest** — optional AES-256-GCM encryption for all sensitive data files. Set a passphrase during setup; data is encrypted before writing to disk. Cloud providers and device compromise cannot read your data.
+- **Knowledge Lookup (RAG)** — ask "what do you know about X" / "tell me about Y" and get a grounded answer from your own notes, topic pages, and context-memory facts. Embeddings happen on-device (xenova WASM in the browser, onnxruntime in Node); the persistent vector index lives in libSQL on Node and IndexedDB on web/mobile via the same `VectorStore` interface. Nothing leaves the device.
 
 ## Quick Start
 
@@ -189,6 +190,7 @@ TypeScript detects conditions (no LLM cost), writes nudges to a file. The app sh
 | `npm run typecheck` | TypeScript type checking |
 | `npx ts-node scripts/migrate-encryption.ts --encrypt` | Encrypt all sensitive data files |
 | `npx ts-node scripts/migrate-encryption.ts --decrypt` | Decrypt all sensitive data files |
+| `npx ts-node scripts/migrate-rag-schema.ts` | Apply the FEAT068 RAG schema (sibling `rag_chunks` table). Idempotent. The same migration ships in `src/db/migrations/0006_rag_chunks.sql` and runs automatically on fresh DB inits — the script is a manual catch-up for older DBs that pre-date this migration. |
 | `node scripts/discover-topics.js` | One-time: tag existing facts with topic hints via Haiku |
 | `node scripts/db-backup.js` | Manual DB backup to cloud folder |
 | `node scripts/restore-db.js` | Restore DB from cloud backup |

@@ -11,6 +11,46 @@ the user runs the app on. Index-side and query-side both pin
 `MODEL_ID = "Xenova/all-MiniLM-L6-v2"` (384-dim) — change `MODEL_ID` to force
 re-indexing.
 
+**Status (FEAT068 landed):** The first concrete RAG path is in production —
+`info_lookup` skill, persistent vector index over notes / topic pages /
+contextMemory facts. Two backends sit behind a shared `VectorStore`
+interface in `src/modules/rag/store.ts`:
+
+- **`LibsqlVectorStore` (Node)** — wraps the existing FEAT042 `embeddings`
+  table for vector storage and `vector_distance_cos` cosine search, plus a
+  sibling `rag_chunks` table (migration `0006_rag_chunks.sql`) for
+  chunk-level identity (chunkId, source, text, modelId).
+- **`IndexedDbVectorStore` (web / Capacitor)** — `idb`-backed; loads all
+  records into memory once on first search and brute-forces cosine in JS.
+  Falls back to an in-memory Map with a single WARN if `indexedDB.open`
+  fails (private browsing / quota disabled).
+
+Skills opt into pre-LLM retrieval via the declarative `retrievalHook`
+manifest field:
+
+```json
+"retrievalHook": {
+  "sources": ["note", "topic", "contextMemory"],
+  "k": 5,
+  "minScore": 0.25,
+  "minScoreInclude": 0.40
+}
+```
+
+The dispatcher reads the field after `resolveContext` and before the LLM
+call, embeds the phrase, runs `retrieveTopK` against the configured
+`VectorStore` (with an 800ms soft timeout), and injects results under
+`retrievedKnowledge` in the user message. Bad-shape hooks WARN once and
+are treated as absent — the dispatcher never crashes on a misconfigured
+manifest. Future RAG-using skills opt in by adding the field; no
+skill-specific dispatcher branches.
+
+**Coexistence note:** the legacy v3 keyword-index file `content_index.json`
+is still in the AppState model (default empty shape, no current writers).
+The new vector index is a SEPARATE store. Both coexist; the vector index
+supersedes `contentIndex` functionally, but the file remains as a
+state-shape placeholder for backwards compatibility.
+
 ---
 
 ## 1. Attachment lifetimes

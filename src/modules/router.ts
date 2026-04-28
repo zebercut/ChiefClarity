@@ -263,7 +263,7 @@ export const TRIAGE_INTENT_TO_SKILL: Partial<Record<IntentType, string>> = {
   bulk_input: "inbox_triage",
   full_planning: "priority_planning",
   general: "general_assistant",
-  info_lookup: "general_assistant",        // forward-compat
+  info_lookup: "info_lookup",              // FEAT068 — RAG-based info_lookup skill
   learning: "general_assistant",           // forward-compat
   feedback: "general_assistant",           // forward-compat
   suggestion_request: "general_assistant", // forward-compat
