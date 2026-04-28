@@ -398,7 +398,10 @@ export default function ChatScreen() {
       // already locked an intent (fast path). See src/modules/v4Gate.ts.
       if (shouldTryV4({ state: s, triageLegacyIntent: triage.legacyIntent ?? null })) {
         try {
-          const routeResult = await routeToSkill({ phrase });
+          const routeResult = await routeToSkill({
+            phrase,
+            triageLegacyIntent: triage.legacyIntent ?? undefined,
+          });
           const dispatchResult = await dispatchSkill(routeResult, phrase, { state: s });
           if (dispatchResult && !dispatchResult.degraded) {
             // FEAT057: persist any writes the v4 handler made via

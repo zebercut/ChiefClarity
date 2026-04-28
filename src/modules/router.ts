@@ -234,6 +234,54 @@ export const FALLBACK_THRESHOLD = 0.40;
 export const FALLBACK_SKILL_ID = "general_assistant";
 
 /**
+ * FEAT066 — Static map from triage's `legacyIntent` to a v4 skill id.
+ * The router consults this BEFORE the structural matcher when the caller
+ * passes `triageLegacyIntent`. Triage is the highest-quality pre-router
+ * classification signal (regex fast-path + Haiku tiebreaker), so when it
+ * has classified the phrase we route on that classification rather than
+ * re-deriving intent from a single-token structural compare or an
+ * embedding (which is unavailable on web per FEAT064).
+ *
+ * Entries with no migrated skill (`okr_update`, `topic_query`, `topic_note`)
+ * are intentionally absent — they fall through to the existing ladder so
+ * the missing-capability state stays visible.
+ *
+ * Forward-compat note: `task_query`, `calendar_query`, `info_lookup`,
+ * `learning`, `feedback`, `suggestion_request` are kept here even though
+ * triage doesn't currently emit them — wiring is ready when triage gains
+ * a fast-path for these.
+ */
+export const TRIAGE_INTENT_TO_SKILL: Partial<Record<IntentType, string>> = {
+  task_create: "task_management",
+  task_update: "task_management",
+  task_query: "task_management",         // forward-compat (triage doesn't emit today)
+  calendar_create: "calendar_management",
+  calendar_update: "calendar_management",
+  calendar_query: "calendar_management", // forward-compat
+  emotional_checkin: "emotional_checkin",
+  // dead via chat surface today — kept for forward compat; emitted via inbox.ts processBundle, not chat-surface routing. See FEAT066 §4.
+  bulk_input: "inbox_triage",
+  full_planning: "priority_planning",
+  general: "general_assistant",
+  info_lookup: "general_assistant",        // forward-compat
+  learning: "general_assistant",           // forward-compat
+  feedback: "general_assistant",           // forward-compat
+  suggestion_request: "general_assistant", // forward-compat
+  // okr_update / topic_query / topic_note: intentionally absent (no migrated skill)
+};
+
+/**
+ * FEAT066 — Module-level cache so we only emit a "mapped to unknown skill"
+ * warn once per skill id. Reset by `_resetTriageHintWarnCacheForTests()`.
+ */
+const _triageHintMissingWarnCache = new Set<string>();
+
+/** Test-only: clear the warn-once cache between cases. */
+export function _resetTriageHintWarnCacheForTests(): void {
+  _triageHintMissingWarnCache.clear();
+}
+
+/**
  * Skills enabled for the v4 routing path. Empty means v4 routing is disabled
  * for everyone (consumers should fall through to legacy classifyIntent).
  *
@@ -270,12 +318,13 @@ export interface RouteOptions {
  * Pick the skill that should handle this phrase.
  *
  * Sequential pipeline (each step short-circuits on hit):
- *   0. directSkillId set → return directly
- *   1. phrase starts with "/" → exact match against structuralTriggers
- *   2. embed phrase → top-3 skills by cosine similarity
- *   3. confidence gate (top1 ≥ HIGH ∧ gap ≥ GAP) → return top-1
- *   4. tiebreaker (Haiku ~80 tokens) → returns one of top-3
- *   5. fallback → general_assistant (or top-1 with warning if missing)
+ *   0.  directSkillId set → return directly
+ *   1a. triage hint (FEAT066) → mapped+registered+enabled → return
+ *   1.  phrase starts with "/" → exact match against structuralTriggers
+ *   2.  embed phrase → top-3 skills by cosine similarity
+ *   3.  confidence gate (top1 ≥ HIGH ∧ gap ≥ GAP) → return top-1
+ *   4.  tiebreaker (Haiku ~80 tokens) → returns one of top-3
+ *   5.  fallback → general_assistant (or top-1 with warning if missing)
  *
  * Never throws. Always returns a RouteResult (skillId may be empty only
  * in the pathological "registry empty AND no fallback skill" case, which
@@ -315,6 +364,59 @@ async function routeToSkillInternal(
   }
 
   const allSkills = registry.getAllSkills();
+
+  // Step 1a — Triage hint (FEAT066). Use upstream classification when the
+  // mapped skill is registered and enabled. Pre-empts both structural and
+  // embedding when it fires.
+  if (input.triageLegacyIntent) {
+    const mappedSkillId = TRIAGE_INTENT_TO_SKILL[input.triageLegacyIntent];
+    if (mappedSkillId) {
+      const skill = registry.getSkill(mappedSkillId);
+      if (!skill) {
+        // Mapped to a skill the registry doesn't know about — warn once,
+        // then fall through to the existing ladder.
+        if (!_triageHintMissingWarnCache.has(mappedSkillId)) {
+          _triageHintMissingWarnCache.add(mappedSkillId);
+          console.warn(
+            `[router] triage_hint map references unknown skill "${mappedSkillId}" ` +
+            `for intent "${input.triageLegacyIntent}"; falling through`
+          );
+        }
+      } else if (!getV4SkillsEnabled().has(mappedSkillId)) {
+        // Disabled per the rollout knob — silent fall-through.
+      } else {
+        // Speculative structural match for the disagreement-warn.
+        // Pure read; does not mutate the warn-once cache or any state.
+        const firstTok = input.phrase.trim().split(/\s+/)[0] ?? "";
+        if (firstTok.length > 0) {
+          const isSlash = firstTok.startsWith("/");
+          const tokenForMatch = isSlash
+            ? firstTok
+            : firstTok.toLowerCase().replace(/[^a-z0-9_-]+$/u, "");
+          const structuralMatches = allSkills.filter((s) =>
+            s.manifest.structuralTriggers.includes(tokenForMatch)
+          );
+          if (
+            structuralMatches.length === 1 &&
+            structuralMatches[0].manifest.id !== mappedSkillId
+          ) {
+            console.warn(
+              `[router] triage_hint pre-empts structural: ` +
+              `triage=${input.triageLegacyIntent}->${mappedSkillId}, ` +
+              `structural=${structuralMatches[0].manifest.id}, ` +
+              `phrase=${fnv1a64Hex(input.phrase)}`
+            );
+          }
+        }
+        return {
+          skillId: mappedSkillId,
+          confidence: 0.95,
+          routingMethod: "triage_hint",
+          candidates: [],
+        };
+      }
+    }
+  }
 
   // Step 1 — Structural match.
   // Slash command: exact-string compare on first whitespace-delimited token.

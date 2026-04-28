@@ -21,6 +21,8 @@ import {
   setV4SkillsEnabled,
   getV4SkillsEnabled,
   _resetOrchestratorForTests,
+  _resetTriageHintWarnCacheForTests,
+  TRIAGE_INTENT_TO_SKILL,
   HIGH_THRESHOLD,
   GAP_THRESHOLD,
   FALLBACK_THRESHOLD,
@@ -634,6 +636,330 @@ async function run(): Promise<void> {
     const r = await gateProbe(0.30, 0.20, true);
     assert.strictEqual(r.method, "fallback");
     assert.strictEqual(r.skillId, FALLBACK_SKILL_ID);
+  });
+
+  // ─── FEAT066 — Triage hint (Step 1a) ────────────────────────────────────
+
+  section("FEAT066 — Triage hint as primary routing signal");
+
+  /**
+   * Helper: build a fixture registry with the migrated v4 skill ids so the
+   * triage-hint map's targets resolve. All skills get a unique embedding
+   * (unused — triage-hint short-circuits before embedding) and are added
+   * to the enabled set unless overridden.
+   */
+  async function buildTriageHintFixture(opts?: {
+    enabled?: string[];
+    extraSkills?: Array<{ id: string; structuralTriggers?: string[] }>;
+  }): Promise<{ tmp: string; registry: SkillRegistryAPI }> {
+    const tmp = setupTmp();
+    _resetOrchestratorForTests();
+    _resetTriageHintWarnCacheForTests();
+    const ids = [
+      "task_management",
+      "calendar_management",
+      "emotional_checkin",
+      "priority_planning",
+      "general_assistant",
+      "inbox_triage",
+    ];
+    for (const id of ids) {
+      writeSkill(tmp, id, validManifest(id));
+    }
+    for (const x of opts?.extraSkills ?? []) {
+      writeSkill(
+        tmp,
+        x.id,
+        validManifest(x.id, { structuralTriggers: x.structuralTriggers ?? [] })
+      );
+    }
+    const cache: Record<string, number[]> = {};
+    ids.forEach((id, i) => (cache[id] = unitVector(384, i * 17)));
+    (opts?.extraSkills ?? []).forEach((x, i) => {
+      cache[x.id] = unitVector(384, 300 + i);
+    });
+    writeCache(tmp, cache);
+    const registry = await buildFixtureRegistry(tmp);
+    setV4SkillsEnabled(opts?.enabled ?? [...ids, ...(opts?.extraSkills ?? []).map((x) => x.id)]);
+    return { tmp, registry };
+  }
+
+  await test("FEAT066: triage hint routes to mapped skill (task_create → task_management)", async () => {
+    const { tmp, registry } = await buildTriageHintFixture();
+    try {
+      const result = await routeToSkill(
+        { phrase: "add a task to call dentist", triageLegacyIntent: "task_create" },
+        { registry, embedder: async () => null }
+      );
+      assert.strictEqual(result.skillId, "task_management");
+      assert.strictEqual(result.routingMethod, "triage_hint");
+      assert.strictEqual(result.confidence, 0.95);
+      assert.deepStrictEqual(result.candidates, []);
+    } finally {
+      teardownTmp(tmp);
+    }
+  });
+
+  await test("FEAT066: triage hint routes for each of the 6 live intents", async () => {
+    const cases: Array<[string, string]> = [
+      ["task_create", "task_management"],
+      ["task_update", "task_management"],
+      ["calendar_create", "calendar_management"],
+      ["calendar_update", "calendar_management"],
+      ["emotional_checkin", "emotional_checkin"],
+      ["full_planning", "priority_planning"],
+    ];
+    for (const [intent, expected] of cases) {
+      const { tmp, registry } = await buildTriageHintFixture();
+      try {
+        const result = await routeToSkill(
+          { phrase: "ignored", triageLegacyIntent: intent as any },
+          { registry, embedder: async () => null }
+        );
+        assert.strictEqual(
+          result.skillId,
+          expected,
+          `intent=${intent} should route to ${expected}, got ${result.skillId}`
+        );
+        assert.strictEqual(result.routingMethod, "triage_hint");
+      } finally {
+        teardownTmp(tmp);
+      }
+    }
+  });
+
+  await test("FEAT066: NO triage hint → existing ladder runs (regression)", async () => {
+    const { tmp, registry } = await buildTriageHintFixture();
+    try {
+      // No triageLegacyIntent — should hit embedding/fallback path. The
+      // null embedder forces the fallback branch.
+      const result = await routeToSkill(
+        { phrase: "totally novel phrase here" },
+        { registry, embedder: async () => null }
+      );
+      assert.notStrictEqual(result.routingMethod, "triage_hint");
+      assert.strictEqual(result.skillId, FALLBACK_SKILL_ID);
+      assert.strictEqual(result.routingMethod, "fallback");
+    } finally {
+      teardownTmp(tmp);
+    }
+  });
+
+  await test("FEAT066: triage hint → unregistered skill warns once + falls through", async () => {
+    const tmp = setupTmp();
+    try {
+      _resetOrchestratorForTests();
+      _resetTriageHintWarnCacheForTests();
+      // Build a registry that LACKS the mapped skill ("task_management").
+      writeSkill(tmp, "general_assistant", validManifest("general_assistant"));
+      writeCache(tmp, { general_assistant: unitVector(384, 0) });
+      const registry = await buildFixtureRegistry(tmp);
+      setV4SkillsEnabled(["general_assistant"]);
+
+      const warns: string[] = [];
+      const origWarn = console.warn;
+      console.warn = (...args: any[]) => {
+        warns.push(args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" "));
+      };
+      try {
+        const result = await routeToSkill(
+          { phrase: "x", triageLegacyIntent: "task_create" },
+          { registry, embedder: async () => null }
+        );
+        // Fell through to the existing ladder → fallback (general_assistant)
+        assert.notStrictEqual(result.routingMethod, "triage_hint");
+        assert.strictEqual(result.skillId, FALLBACK_SKILL_ID);
+        const hit = warns.filter((w) =>
+          w.includes("triage_hint map references unknown skill") &&
+          w.includes("task_management")
+        );
+        assert.strictEqual(hit.length, 1, "expected exactly one warn for unknown skill");
+      } finally {
+        console.warn = origWarn;
+      }
+    } finally {
+      teardownTmp(tmp);
+    }
+  });
+
+  await test("FEAT066: same unregistered skill on second call → no second warn (cache works)", async () => {
+    const tmp = setupTmp();
+    try {
+      _resetOrchestratorForTests();
+      _resetTriageHintWarnCacheForTests();
+      writeSkill(tmp, "general_assistant", validManifest("general_assistant"));
+      writeCache(tmp, { general_assistant: unitVector(384, 0) });
+      const registry = await buildFixtureRegistry(tmp);
+      setV4SkillsEnabled(["general_assistant"]);
+
+      const warns: string[] = [];
+      const origWarn = console.warn;
+      console.warn = (...args: any[]) => {
+        warns.push(args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" "));
+      };
+      try {
+        await routeToSkill(
+          { phrase: "x", triageLegacyIntent: "task_create" },
+          { registry, embedder: async () => null }
+        );
+        await routeToSkill(
+          { phrase: "y", triageLegacyIntent: "task_create" },
+          { registry, embedder: async () => null }
+        );
+        const hit = warns.filter((w) =>
+          w.includes("triage_hint map references unknown skill") &&
+          w.includes("task_management")
+        );
+        assert.strictEqual(hit.length, 1, "warn-once cache must suppress second warn");
+      } finally {
+        console.warn = origWarn;
+      }
+    } finally {
+      teardownTmp(tmp);
+    }
+  });
+
+  await test("FEAT066: triage hint → disabled skill silently falls through (no warn)", async () => {
+    // Mapped skill exists in registry but is NOT in getV4SkillsEnabled().
+    const { tmp, registry } = await buildTriageHintFixture({
+      enabled: ["general_assistant"], // task_management present but disabled
+    });
+    try {
+      const warns: string[] = [];
+      const origWarn = console.warn;
+      console.warn = (...args: any[]) => {
+        warns.push(args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" "));
+      };
+      try {
+        const result = await routeToSkill(
+          { phrase: "x", triageLegacyIntent: "task_create" },
+          { registry, embedder: async () => null }
+        );
+        assert.notStrictEqual(result.routingMethod, "triage_hint");
+        // Should fall through to the existing ladder; null embedder → fallback.
+        assert.strictEqual(result.skillId, FALLBACK_SKILL_ID);
+        const triageWarns = warns.filter(
+          (w) => w.includes("triage_hint") && !w.includes("pre-empts")
+        );
+        assert.strictEqual(
+          triageWarns.length,
+          0,
+          `silent fall-through must NOT warn; got: ${triageWarns.join(" | ")}`
+        );
+      } finally {
+        console.warn = origWarn;
+      }
+    } finally {
+      teardownTmp(tmp);
+    }
+  });
+
+  await test("FEAT066: triage hint disagrees with structural → triage wins, disagreement-warn fires", async () => {
+    const { tmp, registry } = await buildTriageHintFixture({
+      // Add a fixture skill that claims "add" as a structural trigger.
+      // Triage classifies "add a task..." as task_create → task_management.
+      // Structural would pick the conflicting fixture. Triage must win.
+      extraSkills: [{ id: "conflicting_skill", structuralTriggers: ["add"] }],
+    });
+    try {
+      const warns: string[] = [];
+      const origWarn = console.warn;
+      console.warn = (...args: any[]) => {
+        warns.push(args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" "));
+      };
+      try {
+        const result = await routeToSkill(
+          { phrase: "add a task to test", triageLegacyIntent: "task_create" },
+          { registry, embedder: async () => null }
+        );
+        assert.strictEqual(result.routingMethod, "triage_hint");
+        assert.strictEqual(result.skillId, "task_management");
+        const disagree = warns.filter((w) =>
+          w.includes("triage_hint pre-empts structural") &&
+          w.includes("task_create") &&
+          w.includes("task_management") &&
+          w.includes("conflicting_skill")
+        );
+        assert.strictEqual(disagree.length, 1, "disagreement-warn must fire exactly once");
+      } finally {
+        console.warn = origWarn;
+      }
+    } finally {
+      teardownTmp(tmp);
+    }
+  });
+
+  await test("FEAT066: _resetTriageHintWarnCacheForTests resets the cache", async () => {
+    const tmp = setupTmp();
+    try {
+      _resetOrchestratorForTests();
+      _resetTriageHintWarnCacheForTests();
+      writeSkill(tmp, "general_assistant", validManifest("general_assistant"));
+      writeCache(tmp, { general_assistant: unitVector(384, 0) });
+      const registry = await buildFixtureRegistry(tmp);
+      setV4SkillsEnabled(["general_assistant"]);
+
+      const warns: string[] = [];
+      const origWarn = console.warn;
+      console.warn = (...args: any[]) => {
+        warns.push(args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" "));
+      };
+      try {
+        // First call — warn should fire.
+        await routeToSkill(
+          { phrase: "x", triageLegacyIntent: "task_create" },
+          { registry, embedder: async () => null }
+        );
+        const firstHit = warns.filter((w) =>
+          w.includes("triage_hint map references unknown skill") && w.includes("task_management")
+        );
+        assert.strictEqual(firstHit.length, 1, "first miss must warn");
+
+        // Reset and call again — warn should fire again (cache cleared).
+        _resetTriageHintWarnCacheForTests();
+        await routeToSkill(
+          { phrase: "y", triageLegacyIntent: "task_create" },
+          { registry, embedder: async () => null }
+        );
+        const secondHit = warns.filter((w) =>
+          w.includes("triage_hint map references unknown skill") && w.includes("task_management")
+        );
+        assert.strictEqual(secondHit.length, 2, "after reset, miss must warn again");
+      } finally {
+        console.warn = origWarn;
+      }
+    } finally {
+      teardownTmp(tmp);
+    }
+  });
+
+  await test("FEAT066: TRIAGE_INTENT_TO_SKILL omits okr_update / topic_query / topic_note", () => {
+    assert.ok(!("okr_update" in TRIAGE_INTENT_TO_SKILL), "okr_update must not be mapped");
+    assert.ok(!("topic_query" in TRIAGE_INTENT_TO_SKILL), "topic_query must not be mapped");
+    assert.ok(!("topic_note" in TRIAGE_INTENT_TO_SKILL), "topic_note must not be mapped");
+    // Sanity: the live entries we depend on exist.
+    assert.strictEqual(TRIAGE_INTENT_TO_SKILL.task_create, "task_management");
+    assert.strictEqual(TRIAGE_INTENT_TO_SKILL.full_planning, "priority_planning");
+    assert.strictEqual(TRIAGE_INTENT_TO_SKILL.emotional_checkin, "emotional_checkin");
+    assert.strictEqual(TRIAGE_INTENT_TO_SKILL.bulk_input, "inbox_triage");
+  });
+
+  await test("FEAT066: directSkillId beats triage hint (Step 0 still wins)", async () => {
+    const { tmp, registry } = await buildTriageHintFixture();
+    try {
+      const result = await routeToSkill(
+        {
+          phrase: "x",
+          directSkillId: "general_assistant",
+          triageLegacyIntent: "task_create",
+        },
+        { registry, embedder: async () => null }
+      );
+      assert.strictEqual(result.routingMethod, "direct");
+      assert.strictEqual(result.skillId, "general_assistant");
+    } finally {
+      teardownTmp(tmp);
+    }
   });
 
   // ─── Summary ─────────────────────────────────────────────────────────────

@@ -580,7 +580,7 @@ export interface ChatMessage {
   v4Meta?: {
     skillId: string;
     confidence: number;
-    routingMethod: "structural" | "direct" | "embedding" | "haiku" | "fallback";
+    routingMethod: "structural" | "direct" | "embedding" | "haiku" | "triage_hint" | "fallback";
   };
 }
 
