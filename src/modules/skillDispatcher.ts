@@ -29,6 +29,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { MODEL_HEAVY, MODEL_LIGHT, isCircuitOpen, getClient } from "./llm";
 import { loadSkillRegistry } from "./skillRegistry";
 import { getV4SkillsEnabled } from "./router";
+import { fnv1a64Hex } from "../utils/fnv1a";
 import type {
   RouteResult,
   SkillDispatchResult,
@@ -167,19 +168,12 @@ function logDispatchDecision(phrase: string, result: SkillDispatchResult): void 
   );
 }
 
+// FEAT065 — phrase hashing reuses the FNV-1a helper used by router.ts so
+// dispatcher logs correlate with router logs on every platform (no
+// browser-unhash fallback). Non-cryptographic, used only as an opaque
+// log correlator.
 function sha256First16(s: string): string {
-  // Same pattern as router.ts — graceful fallback when running in browser
-  // bundle where Node crypto isn't available. See router.ts for rationale.
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const crypto = (eval("require") as NodeRequire)("crypto") as typeof import("crypto");
-    if (typeof crypto?.createHash === "function") {
-      return crypto.createHash("sha256").update(s, "utf8").digest("hex").slice(0, 16);
-    }
-  } catch {
-    // fall through
-  }
-  return "browser-unhash";
+  return fnv1a64Hex(s);
 }
 
 // ─── Context resolver (minimal v2.01 version) ──────────────────────────────
@@ -354,20 +348,26 @@ function buildUserMessage(phrase: string, context: Record<string, unknown>): str
 }
 
 function buildToolSchemas(skill: LoadedSkill) {
-  // Minimal tool schemas — for v2.01 the dispatcher exposes each declared
-  // tool with a permissive input_schema (object with no required props).
-  // Each skill's prompt names the args it expects; the LLM follows the
-  // prompt rather than relying on the schema. The full schema-per-tool
-  // model lands when we have a tool registry (FEAT080).
-  return skill.manifest.tools.map((toolName) => ({
-    name: toolName,
-    description: `Tool exported by ${skill.manifest.id} skill.`,
-    input_schema: {
-      type: "object" as const,
-      properties: {},
-      additionalProperties: true,
-    },
-  }));
+  return skill.manifest.tools.map((toolName) => {
+    const schema = skill.toolSchemas?.[toolName];
+    if (schema) return schema;
+    // TODO(FEAT-future): downgrade this WARN to a hard error once all skills
+    // declare toolSchemas in production for one release cycle. Tracking in
+    // v2.03 backlog (per FEAT065 design review §10 / condition 8).
+    console.warn(
+      `[skillDispatcher] skill "${skill.manifest.id}" missing toolSchemas[${toolName}] — ` +
+      `falling back to permissive empty schema. LLM may emit empty args.`
+    );
+    return {
+      name: toolName,
+      description: `Tool exported by ${skill.manifest.id} skill.`,
+      input_schema: {
+        type: "object" as const,
+        properties: {},
+        additionalProperties: true,
+      },
+    };
+  });
 }
 
 function degradedAndLog(skill: LoadedSkill, phrase: string, reason: string): SkillDispatchResult {

@@ -1,4 +1,4 @@
-import type { ToolHandler } from "../../types/skills";
+import type { SkillTool, ToolHandler } from "../../types/skills";
 import type { ActionPlan, AppState, FileKey, Note } from "../../types";
 
 /**
@@ -87,6 +87,68 @@ export const submit_note_capture: ToolHandler = async (args, ctx) => {
  * function must update accordingly. Unit test asserts the produced
  * shape is structurally complete.
  */
+export const toolSchemas: Record<string, SkillTool> = {
+  submit_note_capture: {
+    name: "submit_note_capture",
+    description:
+      "Save a free-form note for later review. notes_capture is create-only — every write must use action: \"add\".",
+    input_schema: {
+      type: "object",
+      properties: {
+        reply: {
+          type: "string",
+          description:
+            "Short confirmation surfaced verbatim to the user (e.g. acknowledging the captured idea).",
+        },
+        writes: {
+          type: "array",
+          description:
+            "List of notes to add. Each note must include verbatim text from the user.",
+          items: {
+            type: "object",
+            properties: {
+              action: {
+                type: "string",
+                enum: ["add"],
+                description: "Always \"add\" — notes_capture is create-only.",
+              },
+              data: {
+                type: "object",
+                description:
+                  "Note payload. Must include `text` (the captured note body); other Note fields are optional.",
+                properties: {
+                  text: {
+                    type: "string",
+                    description:
+                      "Verbatim note text from the user, normalized only for trivial whitespace.",
+                  },
+                },
+                required: ["text"],
+                additionalProperties: true,
+              },
+            },
+            required: ["action", "data"],
+            additionalProperties: false,
+          },
+        },
+        conflictsToCheck: {
+          type: "array",
+          description:
+            "Optional list of free-text conflict probes (rare for notes; usually omit).",
+          items: { type: "string" },
+        },
+        needsClarification: {
+          type: "boolean",
+          description:
+            "Set true only if you cannot determine the note text; pair with a question in `reply`.",
+        },
+      },
+      required: ["reply"],
+      additionalProperties: false,
+    },
+  },
+};
+
 export function fillNoteDefaults(input: Partial<Note> & { text?: string }): Record<string, unknown> {
   return {
     text: String(input.text ?? ""),

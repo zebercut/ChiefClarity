@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-04-27T23:07:28.726Z",
-  "count": 48,
+  "generatedAt": "2026-04-28T01:37:16.474Z",
+  "count": 49,
   "features": [
     {
       "id": "FEAT021",
@@ -430,6 +430,24 @@
         "web-support",
         "build-system",
         "isomorphic-crypto"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT065",
+      "title": "Fix v4 dispatcher: declare tool schemas per skill",
+      "category": "Architecture/Bug Fix",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "skill-architecture",
+        "v4",
+        "production-bug",
+        "tool-schemas",
+        "real-llm-smoke"
       ],
       "type": "feature",
       "complexity": null

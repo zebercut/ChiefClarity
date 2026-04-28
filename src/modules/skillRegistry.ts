@@ -35,6 +35,7 @@ import type {
   SkillManifest,
   SkillRegistryAPI,
   SkillSurface,
+  SkillTool,
   ToolHandler,
 } from "../types/skills";
 
@@ -235,14 +236,28 @@ async function buildSkillFromBundle(folderName: string, entry: typeof SKILL_BUND
     handlers[toolName] = handler as ToolHandler;
   }
 
+  // FEAT065 — `import * as <skill>Handlers` surfaces every named export from
+  // handlers.ts including the `toolSchemas` constant. Default to {} when the
+  // export is absent; the dispatcher's WARN fallback handles that case.
+  const toolSchemas = readToolSchemas(handlersModule);
+
   return {
     manifest,
     prompt: entry.prompt,
     lockedZones,
     contextRequirements,
     handlers,
+    toolSchemas,
     descriptionEmbedding: null,
   };
+}
+
+function readToolSchemas(handlersModule: Record<string, unknown>): Record<string, SkillTool> {
+  const raw = (handlersModule as { toolSchemas?: unknown }).toolSchemas;
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    return raw as Record<string, SkillTool>;
+  }
+  return {};
 }
 
 async function loadFromFs(t0: number, opts: LoadSkillRegistryOptions): Promise<SkillRegistryAPI> {
@@ -433,6 +448,10 @@ async function loadOneSkill(
     handlers[toolName] = handler;
   }
 
+  // FEAT065 — pull `toolSchemas` named export off the handlers module if it
+  // exists. Default to {} so the dispatcher WARN fallback catches missing.
+  const toolSchemas = readToolSchemas(handlersModule);
+
   // Embedding — try cache first, then compute
   let descriptionEmbedding: Float32Array | null = null;
   const stat = fs.statSync(manifestPath);
@@ -450,6 +469,7 @@ async function loadOneSkill(
     lockedZones,
     contextRequirements,
     handlers,
+    toolSchemas,
     descriptionEmbedding,
   };
 }

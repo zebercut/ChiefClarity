@@ -1,4 +1,4 @@
-import type { ToolHandler } from "../../types/skills";
+import type { SkillTool, ToolHandler } from "../../types/skills";
 import type { ActionPlan, AppState, ActionItem, FileKey, CalendarEvent } from "../../types";
 
 /**
@@ -100,6 +100,80 @@ export const submit_calendar_action: ToolHandler = async (args, ctx) => {
       writeError,
     },
   };
+};
+
+export const toolSchemas: Record<string, SkillTool> = {
+  submit_calendar_action: {
+    name: "submit_calendar_action",
+    description:
+      "Create, update, cancel, or query calendar events. Single-occurrence events only — recurring events are handled by a separate skill.",
+    input_schema: {
+      type: "object",
+      properties: {
+        reply: {
+          type: "string",
+          description:
+            "Short user-facing confirmation or query summary. Required and surfaced verbatim to the user.",
+        },
+        writes: {
+          type: "array",
+          description:
+            "List of calendar mutations. Omit when the request is a pure query.",
+          items: {
+            type: "object",
+            properties: {
+              action: {
+                type: "string",
+                enum: ["add", "update", "delete"],
+                description:
+                  "Operation type. Use add for new events, update for edits, delete for cancellations.",
+              },
+              id: {
+                type: "string",
+                description:
+                  "Existing event id. Required for update and delete; omit for add.",
+              },
+              data: {
+                type: "object",
+                description:
+                  "Event payload. Single-occurrence only — do NOT include recurring, recurrence, or recurrenceDay fields. Recurring events are handled by the recurring_tasks skill.",
+                additionalProperties: true,
+              },
+            },
+            required: ["action"],
+            additionalProperties: false,
+          },
+        },
+        items: {
+          type: "array",
+          description:
+            "Query result rows for the user. Omit unless this is a query.",
+          items: {
+            type: "object",
+            additionalProperties: true,
+          },
+        },
+        conflictsToCheck: {
+          type: "array",
+          description:
+            "Optional list of free-text conflict probes for the executor (e.g. overlapping events).",
+          items: { type: "string" },
+        },
+        suggestions: {
+          type: "array",
+          description: "Optional follow-up suggestions surfaced to the user.",
+          items: { type: "string" },
+        },
+        needsClarification: {
+          type: "boolean",
+          description:
+            "Set true when the request is too ambiguous to act on; pair with a question in `reply`.",
+        },
+      },
+      required: ["reply"],
+      additionalProperties: false,
+    },
+  },
 };
 
 /**

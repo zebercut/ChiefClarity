@@ -1,4 +1,4 @@
-import type { ToolHandler } from "../../types/skills";
+import type { SkillTool, ToolHandler } from "../../types/skills";
 import type {
   ActionPlan,
   AppState,
@@ -99,6 +99,98 @@ export const submit_inbox_triage: ToolHandler = async (args, ctx) => {
       writeError,
     },
   };
+};
+
+export const toolSchemas: Record<string, SkillTool> = {
+  submit_inbox_triage: {
+    name: "submit_inbox_triage",
+    description:
+      "Process inbox items by routing each to the correct downstream file. Each write declares its own target `file` from the inbox-triage allowlist.",
+    input_schema: {
+      type: "object",
+      properties: {
+        reply: {
+          type: "string",
+          description:
+            "Short user-facing summary of how the inbox items were routed. Surfaced verbatim.",
+        },
+        writes: {
+          type: "array",
+          description:
+            "List of mutations across the allowlisted files. Each write declares its own `file`.",
+          items: {
+            type: "object",
+            properties: {
+              file: {
+                type: "string",
+                enum: [
+                  "tasks",
+                  "calendar",
+                  "notes",
+                  "contextMemory",
+                  "userObservations",
+                  "recurringTasks",
+                ],
+                description:
+                  "Target file for this write. Must be one of the six allowlisted files.",
+              },
+              action: {
+                type: "string",
+                enum: ["add", "update", "delete"],
+                description:
+                  "Operation type. Use add for new items, update for edits, delete for removal.",
+              },
+              id: {
+                type: "string",
+                description:
+                  "Existing item id. Required for update and delete; omit for add.",
+              },
+              data: {
+                type: "object",
+                description:
+                  "Per-file payload. Shape varies by `file`; include only the fields you intend to set.",
+                additionalProperties: true,
+              },
+              sourceNoteId: {
+                type: "string",
+                description:
+                  "Optional id of the originating inbox note this write was derived from.",
+              },
+            },
+            required: ["file", "action"],
+            additionalProperties: false,
+          },
+        },
+        items: {
+          type: "array",
+          description:
+            "Query result rows for the user. Usually omit for triage flows.",
+          items: {
+            type: "object",
+            additionalProperties: true,
+          },
+        },
+        conflictsToCheck: {
+          type: "array",
+          description:
+            "Optional list of free-text conflict probes for the executor.",
+          items: { type: "string" },
+        },
+        suggestions: {
+          type: "array",
+          description: "Optional follow-up suggestions surfaced to the user.",
+          items: { type: "string" },
+        },
+        needsClarification: {
+          type: "boolean",
+          description:
+            "Set true when triage cannot be completed without more input; pair with a question in `reply`.",
+        },
+      },
+      required: ["reply"],
+      additionalProperties: false,
+    },
+  },
 };
 
 interface NormalizedWrite {

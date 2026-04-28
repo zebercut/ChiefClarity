@@ -1,4 +1,4 @@
-import type { ToolHandler } from "../../types/skills";
+import type { SkillTool, ToolHandler } from "../../types/skills";
 import type { ActionPlan, AppState, FileKey } from "../../types";
 import { fillObservationDefaults } from "../inbox_triage/handlers";
 
@@ -86,4 +86,76 @@ export const submit_emotional_checkin: ToolHandler = async (args, ctx) => {
       writeError,
     },
   };
+};
+
+// FEAT065 — schema is intentionally narrow. The nested `writes[].data` shape
+// is strict (additionalProperties: false) so the LLM cannot smuggle
+// crisis-disclosure-related text into fields outside `observation`. Any new
+// field here must be added in lockstep with prompt + handler updates and a
+// re-review of the FEAT063 safety scope.
+export const toolSchemas: Record<string, SkillTool> = {
+  submit_emotional_checkin: {
+    name: "submit_emotional_checkin",
+    description:
+      "Capture a brief emotional-state observation into userObservations. The reply is a 1-sentence empathetic acknowledgement; the write stores the observation verbatim.",
+    input_schema: {
+      type: "object",
+      properties: {
+        reply: {
+          type: "string",
+          description:
+            "One-sentence empathetic acknowledgement surfaced verbatim to the user.",
+        },
+        writes: {
+          type: "array",
+          description:
+            "Single-element list capturing the observation. Use exactly one entry, or omit when needsClarification is true.",
+          items: {
+            type: "object",
+            properties: {
+              action: {
+                type: "string",
+                enum: ["add"],
+                description: "Always \"add\" — emotional_checkin is capture-only.",
+              },
+              data: {
+                type: "object",
+                description:
+                  "Observation payload. Strict shape: only observation, date, and the array key are accepted.",
+                properties: {
+                  observation: {
+                    type: "string",
+                    description:
+                      "Verbatim observation captured from the user, in their own words.",
+                  },
+                  date: {
+                    type: "string",
+                    description:
+                      "ISO date (YYYY-MM-DD) for this observation. Defaults to userToday when omitted.",
+                  },
+                  _arrayKey: {
+                    type: "string",
+                    enum: ["emotionalState"],
+                    description:
+                      "Sub-array selector inside userObservations. Always \"emotionalState\".",
+                  },
+                },
+                required: ["observation"],
+                additionalProperties: false,
+              },
+            },
+            required: ["action", "data"],
+            additionalProperties: false,
+          },
+        },
+        needsClarification: {
+          type: "boolean",
+          description:
+            "Set true to skip the write and prompt the user for more context (e.g. when safety branch fires).",
+        },
+      },
+      required: ["reply"],
+      additionalProperties: false,
+    },
+  },
 };
