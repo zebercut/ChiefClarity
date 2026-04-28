@@ -224,12 +224,30 @@ import type { RouteInput, RouteResult } from "../types/orchestrator";
 import { loadSkillRegistry } from "./skillRegistry";
 import { fnv1a64Hex } from "../utils/fnv1a";
 
+// FEAT069 — Calibrated against the 74-phrase corpus in
+// scripts/scratch/calibrate-routing.ts (gitignored). Calibration data +
+// cliff visualization live in FEAT069_test-results.md. Key findings:
+//
+//   * Xenova/all-MiniLM-L6-v2 cosine scores rarely exceed 0.65 even for
+//     clear in-distribution matches. Canonical phrases score 0.20-0.62.
+//     The original HIGH_THRESHOLD=0.80 was wildly miscalibrated and
+//     forced unnecessary Haiku tiebreaker calls. Lowered to 0.50.
+//   * Out-of-distribution noise tops out around 0.19 ("ok"), but short
+//     "what is X" / "who is Y" knowledge phrases also score very low
+//     (0.04-0.15) because the input is too short to differentiate.
+//     The empirical cliff is mushy below 0.20 — the Haiku tiebreaker
+//     is the design-intended resolver for that band per the FEAT069
+//     architect (Decision 6, 0.05 admission). FALLBACK_THRESHOLD set
+//     to 0.05 admits short knowledge phrases to the Haiku tiebreaker
+//     instead of the polite-refusal fallback.
+//   * GAP_THRESHOLD unchanged at 0.15.
+
 /** Confidence above which top-1 wins outright (no tiebreaker). */
-export const HIGH_THRESHOLD = 0.80;
+export const HIGH_THRESHOLD = 0.50;
 /** Required gap between top-1 and top-2 for outright win. */
 export const GAP_THRESHOLD = 0.15;
 /** Below this, no tiebreaker — fall back to general_assistant directly. */
-export const FALLBACK_THRESHOLD = 0.40;
+export const FALLBACK_THRESHOLD = 0.05;
 /** Skill id used when no installed skill matches well enough. */
 export const FALLBACK_SKILL_ID = "general_assistant";
 
@@ -317,10 +335,12 @@ export interface RouteOptions {
 /**
  * Pick the skill that should handle this phrase.
  *
- * Sequential pipeline (each step short-circuits on hit):
+ * Sequential pipeline (each step short-circuits on hit). FEAT069 retired
+ * the rule-based pre-filters (triage regex fast-path + structural first-
+ * token match); the embedding step is now the primary NL classifier.
+ *
  *   0.  directSkillId set → return directly
  *   1a. triage hint (FEAT066) → mapped+registered+enabled → return
- *   1.  phrase starts with "/" → exact match against structuralTriggers
  *   2.  embed phrase → top-3 skills by cosine similarity
  *   3.  confidence gate (top1 ≥ HIGH ∧ gap ≥ GAP) → return top-1
  *   4.  tiebreaker (Haiku ~80 tokens) → returns one of top-3
@@ -385,29 +405,6 @@ async function routeToSkillInternal(
       } else if (!getV4SkillsEnabled().has(mappedSkillId)) {
         // Disabled per the rollout knob — silent fall-through.
       } else {
-        // Speculative structural match for the disagreement-warn.
-        // Pure read; does not mutate the warn-once cache or any state.
-        const firstTok = input.phrase.trim().split(/\s+/)[0] ?? "";
-        if (firstTok.length > 0) {
-          const isSlash = firstTok.startsWith("/");
-          const tokenForMatch = isSlash
-            ? firstTok
-            : firstTok.toLowerCase().replace(/[^a-z0-9_-]+$/u, "");
-          const structuralMatches = allSkills.filter((s) =>
-            s.manifest.structuralTriggers.includes(tokenForMatch)
-          );
-          if (
-            structuralMatches.length === 1 &&
-            structuralMatches[0].manifest.id !== mappedSkillId
-          ) {
-            console.warn(
-              `[router] triage_hint pre-empts structural: ` +
-              `triage=${input.triageLegacyIntent}->${mappedSkillId}, ` +
-              `structural=${structuralMatches[0].manifest.id}, ` +
-              `phrase=${fnv1a64Hex(input.phrase)}`
-            );
-          }
-        }
         return {
           skillId: mappedSkillId,
           confidence: 0.95,
@@ -415,33 +412,6 @@ async function routeToSkillInternal(
           candidates: [],
         };
       }
-    }
-  }
-
-  // Step 1 — Structural match.
-  // Slash command: exact-string compare on first whitespace-delimited token.
-  // Non-slash: compare the lowercased first token against structuralTriggers
-  // so soft phrases ("feeling stressed", "focus on what matters") still
-  // route correctly when the embedder is unavailable on web.
-  {
-    const firstToken = input.phrase.trim().split(/\s+/)[0] ?? "";
-    if (firstToken.length > 0) {
-      const isSlash = firstToken.startsWith("/");
-      const tokenForMatch = isSlash ? firstToken : firstToken.toLowerCase().replace(/[^a-z0-9_-]+$/u, "");
-      const matches = allSkills.filter((s) =>
-        s.manifest.structuralTriggers.includes(tokenForMatch)
-      );
-      if (matches.length === 1) {
-        return {
-          skillId: matches[0].manifest.id,
-          confidence: 1.0,
-          routingMethod: "structural",
-          candidates: [],
-        };
-      }
-      // Zero or many matches → fall through to embedding (loader rejects
-      // duplicate triggers within a skill, but two skills can claim the
-      // same single-token trigger).
     }
   }
 

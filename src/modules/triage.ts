@@ -7,7 +7,6 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import type { IntentType, HotContext, AppState } from "../types";
-import { TOKEN_BUDGETS } from "./router";
 import { MODEL_LIGHT, isCircuitOpen } from "./llm";
 import { getTodayFromTz, nowLocalIso } from "../utils/dates";
 
@@ -40,8 +39,6 @@ export interface TriageResult {
   needsClarification?: boolean;
   clarificationQuestion?: string;
   clarificationOptions?: ClarificationOption[];
-  /** If set, the triage was resolved by regex fast-path (no LLM call). */
-  fastPath?: boolean;
   /** Legacy intentType for backward compat with MODEL_BY_INTENT. */
   legacyIntent?: IntentType;
 }
@@ -177,73 +174,6 @@ Offer 2-3 options with clear labels and hints.
 
 Use the submit_triage tool to respond.`;
 
-// ── Regex fast-path ────────────────────────────────────────────────────
-
-const FAST_PATH_MAP: Array<[RegExp[], Partial<TriageResult> & { legacyIntent: IntentType }]> = [
-  [
-    [/\b(add|create|new)\b.*(task|todo|reminder)/i, /\b(remind me|remember to|don't forget)\b/i],
-    { dataSources: ["tasks", "calendar"], complexity: "low", actionType: "create", legacyIntent: "task_create" },
-  ],
-  [
-    [/\b(mark|done|complete|finished|cancel)\b.*(task|todo)/i, /\b(done with|finished)\b/i],
-    { dataSources: ["tasks"], complexity: "low", actionType: "update", legacyIntent: "task_update" },
-  ],
-  [
-    [/\b(schedule|book|set up)\b.*(meeting|appointment|call|event)/i],
-    { dataSources: ["calendar", "tasks"], complexity: "low", actionType: "create", legacyIntent: "calendar_create" },
-  ],
-  [
-    [/\b(cancel|reschedule|move|postpone)\b.*(meeting|event|appointment|call)/i],
-    { dataSources: ["calendar"], complexity: "low", actionType: "update", legacyIntent: "calendar_update" },
-  ],
-  [
-    [/\b(plan my|plan the|plan for)\b.*(day|week|tomorrow|morning|afternoon)/i, /\b(weekly review|daily plan|prepare.*plan)\b/i],
-    { dataSources: ["tasks", "calendar", "okr", "recurring", "lifestyle", "observations", "facts"], complexity: "high", actionType: "plan", legacyIntent: "full_planning" },
-  ],
-  [
-    [/\b(okr|goal|objective|key result)\b/i],
-    { dataSources: ["okr", "tasks"], complexity: "low", actionType: "update", legacyIntent: "okr_update" },
-  ],
-  [
-    [/\b(feeling|stressed|frustrated|anxious|overwhelmed|venting|what a day)\b/i],
-    { dataSources: ["facts", "observations", "tasks"], complexity: "high", actionType: "chat", legacyIntent: "emotional_checkin" },
-  ],
-  // FEAT068 — info_lookup fast-path. Matches "what do you know about X",
-  // "tell me about Y", "what was that thing about Z", "any info on W",
-  // "summarize what I know about Q". The dispatcher's pre-LLM retrieval
-  // hook then fetches top-K chunks from the on-device vector index.
-  [
-    [
-      /^(what (do you know|can you tell me)|tell me) about\b/i,
-      /^what was that (thing|idea) (about|on)\b/i,
-      /^what (about|did i say about)\b/i,
-      /^(any info on|do you know anything about|give me the rundown on)\b/i,
-      /^summarize what i (know|have) (about|on)\b/i,
-    ],
-    { dataSources: ["notes", "topics", "facts"], complexity: "low", actionType: "query", legacyIntent: "info_lookup" },
-  ],
-];
-
-function tryFastPath(phrase: string): TriageResult | null {
-  const lower = phrase.toLowerCase().trim();
-  for (const [patterns, partial] of FAST_PATH_MAP) {
-    if (patterns.some((p) => p.test(lower))) {
-      return {
-        understanding: phrase,
-        dataSources: partial.dataSources || [],
-        queryHints: {},
-        semanticQuery: null,
-        canHandle: true,
-        complexity: partial.complexity || "low",
-        actionType: partial.actionType || "chat",
-        fastPath: true,
-        legacyIntent: partial.legacyIntent,
-      };
-    }
-  }
-  return null;
-}
-
 // ── Main triage function ───────────────────────────────────────────────
 
 export async function runTriage(
@@ -252,19 +182,17 @@ export async function runTriage(
   hotContext: HotContext | null,
   state?: AppState | null
 ): Promise<TriageResult> {
-  // 1. Try regex fast-path
-  const fast = tryFastPath(phrase);
-  if (fast) {
-    console.log(`[triage] fast-path → ${fast.legacyIntent} (${fast.actionType}, ${fast.complexity})`);
-    return fast;
-  }
+  // FEAT069 — Regex intent fast-path retired. Triage no longer classifies
+  // skill routing; the v4 router's embedding step is the only NL classifier.
+  // The Haiku call below still emits `legacyIntent` for the legacy v3 chain
+  // (`MODEL_BY_INTENT`) and FEAT066's triage_hint short-circuit.
 
-  // 2. If no LLM client or circuit breaker open, return safe default
+  // 1. If no LLM client or circuit breaker open, return safe default
   if (!_client || isCircuitOpen()) {
     return safeDefault(phrase);
   }
 
-  // 3. Call Haiku for triage
+  // 2. Call Haiku for triage
   try {
     const dataVolumes = state ? buildDataVolumes(state) : null;
     const scopePreferences = state ? extractScopePreferences(state) : [];

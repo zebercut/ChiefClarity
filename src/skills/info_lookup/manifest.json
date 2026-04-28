@@ -1,7 +1,7 @@
 {
   "id": "info_lookup",
   "version": "1.0.0",
-  "description": "Retrieve and synthesize knowledge from the user's own notes, topic pages, and context-memory facts in response to 'what do you know about X', 'tell me about Y', 'what about Z', 'any info on W' phrasings. Pre-LLM retrieval pulls the top semantically-similar chunks from the on-device vector index; the prompt cites the source ('from your notes', 'you mentioned in topic Y') and never fabricates content not present in the retrieved chunks.",
+  "description": "Answer questions and look up information. What is X. Who is Y. Tell me about Z. What about W. What was that thing about Q. What did I say about T. Any info on U. Do you know anything about V. Give me the rundown on R. Summarize what I know about S. Explain X. Definitions, identities, concepts, topics, and recall questions. What is the capital of France. What is React. What is a closure. How does photosynthesis work. Pulls the top semantically-similar chunks from the user's notes, topic pages, and context-memory facts, then cites the source ('from your notes', 'you mentioned in topic Y'). When retrieval is empty for a general-knowledge question (capitals, programming concepts, science topics, definitions), answers from general world knowledge with an explicit 'I don't have personal notes about X, but in general' disclaimer rather than refusing.",
   "triggerPhrases": [
     "what do you know about",
     "tell me about",

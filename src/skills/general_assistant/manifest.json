@@ -1,7 +1,7 @@
 {
   "id": "general_assistant",
   "version": "1.0.0",
-  "description": "Freeform conversational assistant. Handles phrases that don't match a specialized skill (chitchat, opinion questions, meta questions about the assistant itself, simple explanations). Does NOT pretend to perform specialized actions: when the user asks for something a specialized skill should handle (creating a task, scheduling an event, planning the day), this skill politely says so instead of fabricating an action.",
+  "description": "Freeform conversational assistant for chitchat, small talk, greetings, thanks, jokes, laughter, acknowledgements, opinion questions, and meta questions about the assistant itself. Handles 'how are you', 'what's up', 'thanks', 'haha', 'ok', 'yes', 'tell me a joke', 'what can you do', 'what do you think', 'tell me about yourself', 'help me understand', 'explain'. Does NOT pretend to perform specialized actions: when the user asks for something a specialized skill should handle (creating a task, scheduling an event, planning the day, looking up notes), this skill politely defers instead of fabricating an action.",
   "triggerPhrases": [
     "tell me a joke",
     "what do you think",

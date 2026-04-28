@@ -1,0 +1,26 @@
+{
+  "id": "FEAT069",
+  "title": "Retire regex routing, trust embedding layer",
+  "category": "Architecture",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v2.02",
+  "createdAt": "2026-04-28T13:35:16.313Z",
+  "updatedAt": "2026-04-28T15:46:14.037Z",
+  "tags": [
+    "skill-routing",
+    "v4",
+    "regex-retirement",
+    "calibration",
+    "embeddings",
+    "real-llm-smoke"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

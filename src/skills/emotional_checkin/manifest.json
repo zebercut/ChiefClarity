@@ -1,7 +1,7 @@
 {
   "id": "emotional_checkin",
   "version": "1.0.0",
-  "description": "Capture short emotional disclosures verbatim into userObservations.emotionalState. Handles 'I'm feeling stressed', 'feeling anxious', 'I'm overwhelmed', 'I'm burned out', 'tough day', 'great day', 'feeling productive', 'venting'. One short warm acknowledgement, no platitudes, no advice unless asked. Crisis signals (explicit suicide / self-harm / harm-others / severe-hopelessness-with-planning) trigger a locked support reply with zero writes.",
+  "description": "Capture short emotional disclosures and stress/mood signals about how the user is feeling. Handles 'I'm feeling stressed', 'feeling anxious', 'I'm overwhelmed', 'I'm burned out', 'I'm exhausted', 'tough day', 'rough day', 'great day', 'feeling productive', 'venting'. ONLY for explicit emotional disclosure, NOT for chitchat, greetings, thanks, or short acknowledgements. One short warm acknowledgement, no platitudes, no advice unless asked. Crisis signals (explicit suicide / self-harm / harm-others / severe-hopelessness-with-planning) trigger a locked support reply with zero writes.",
   "triggerPhrases": [
     "feeling stressed",
     "feeling anxious",

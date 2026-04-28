@@ -275,8 +275,12 @@ async function run(): Promise<void> {
     assert.strictEqual(rh.minScoreInclude, 0.40);
   });
 
-  section("FEAT068 — triage fast-path regex covers info_lookup phrases");
+  section("FEAT069 — triage no longer regex-classifies intent");
 
+  // FEAT069 deleted FAST_PATH_MAP and tryFastPath. The Haiku call is now
+  // the only intent classifier in triage; absent a client, runTriage
+  // returns safeDefault with legacyIntent: "general". The "fastPath"
+  // field is gone from TriageResult entirely (compile-time deletion).
   const phrases = [
     "what do you know about Project Alpha",
     "tell me about Contact A",
@@ -286,14 +290,18 @@ async function run(): Promise<void> {
     "summarize what I know about my notes",
   ];
   for (const phrase of phrases) {
-    await test(`triage fast-path → info_lookup for "${phrase}"`, async () => {
+    await test(`triage returns no fastPath flag for "${phrase}"`, async () => {
       const result = await runTriage(phrase, "", null, null);
+      // The field doesn't exist on the type any more. Probe defensively.
       assert.strictEqual(
-        result.legacyIntent,
-        "info_lookup",
-        `expected info_lookup, got ${result.legacyIntent} (fastPath=${result.fastPath})`
+        (result as any).fastPath,
+        undefined,
+        `fastPath field must be undefined; got ${(result as any).fastPath}`
       );
-      assert.strictEqual(result.fastPath, true);
+      // Without a Haiku client wired in, runTriage falls back to safeDefault
+      // which emits legacyIntent="general". The router's embedding step is
+      // responsible for picking info_lookup from here on out.
+      assert.strictEqual(result.legacyIntent, "general");
     });
   }
 
