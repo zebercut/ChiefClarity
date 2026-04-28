@@ -1,17 +1,19 @@
 /**
  * FEAT064 — Build-time skill bundler.
+ * FEAT067 — Now also pre-computes skill `descriptionEmbedding` at bundle
+ * time and emits the vectors into the generated bundle, so web/mobile
+ * bundles ship real 384-dim vectors instead of relying on a Node-only
+ * runtime compute path. The embedding compute is deterministic given
+ * model + input text, so build-time is the right cache layer.
  *
  * Walks src/skills/<id>/, validates each folder has the four required files,
  * and emits src/skills/_generated/skillBundle.ts — a static map keyed by
- * skill id with parsed manifest, raw prompt text, and module imports for
- * context.ts and handlers.ts.
- *
- * Web/mobile cannot use fs.readdirSync at runtime, so the registry imports
- * the generated bundle. Node defaults to the bundle too; LIFEOS_SKILL_LIVE_RELOAD=1
- * re-enables the legacy fs walk for skill-author live editing.
+ * skill id with parsed manifest, raw prompt text, module imports for
+ * context.ts and handlers.ts, AND a 384-float `descriptionEmbedding` array.
  *
  * Output is deterministic — sorted lexicographically, no timestamps, no
- * absolute paths. Running twice on the same source produces byte-equal output.
+ * absolute paths, embeddings rounded to consistent precision. Running
+ * twice on the same source produces byte-equal output.
  */
 
 import * as fs from "fs";
@@ -29,6 +31,7 @@ interface SkillFolder {
   manifestId: string;  // manifest.json's id field
   manifest: any;
   promptText: string;
+  descriptionEmbedding: number[]; // FEAT067: 384 floats
 }
 
 function fail(msg: string): never {
@@ -47,7 +50,12 @@ function discoverFolders(): string[] {
     .sort();
 }
 
-function readSkillFolder(folderName: string): SkillFolder {
+function readSkillFolderBase(folderName: string): {
+  id: string;
+  manifestId: string;
+  manifest: any;
+  promptText: string;
+} {
   const folderPath = path.join(SKILLS_DIR, folderName);
   for (const f of REQUIRED_FILES) {
     const p = path.join(folderPath, f);
@@ -63,6 +71,9 @@ function readSkillFolder(folderName: string): SkillFolder {
   }
   if (!manifest || typeof manifest.id !== "string" || manifest.id.length === 0) {
     fail(`${folderName}: manifest.id missing or not a string`);
+  }
+  if (typeof manifest.description !== "string" || manifest.description.length === 0) {
+    fail(`${folderName}: manifest.description missing or not a string`);
   }
   const promptText = fs.readFileSync(path.join(folderPath, "prompt.md"), "utf-8");
   return { id: folderName, manifestId: manifest.id, manifest, promptText };
@@ -105,12 +116,25 @@ function emit(folders: SkillFolder[]): string {
   }
   lines.push("");
 
+  // FEAT067 — Skill description embeddings (pre-computed, deterministic)
+  for (const f of folders) {
+    const constName = `${f.id.toUpperCase()}_EMBEDDING`;
+    // Format embedding as a single-line array literal. Each float written
+    // via toString() — V8 emits the shortest round-trip representation,
+    // which is stable across runs given the same input bytes.
+    const formatted = f.descriptionEmbedding.map((v) => v.toString()).join(",");
+    lines.push(`const ${constName}: ReadonlyArray<number> = [${formatted}];`);
+  }
+  lines.push("");
+
   // Bundle interface
   lines.push("export interface BundledSkill {");
   lines.push("  manifest: SkillManifest;");
   lines.push("  prompt: string;");
   lines.push("  context: { contextRequirements?: ContextRequirements; default?: ContextRequirements } & Record<string, unknown>;");
   lines.push("  handlers: Record<string, ToolHandler>;");
+  lines.push("  /** FEAT067 — 384-dim description embedding pre-computed at bundle time. */");
+  lines.push("  descriptionEmbedding: ReadonlyArray<number>;");
   lines.push("}");
   lines.push("");
 
@@ -119,11 +143,13 @@ function emit(folders: SkillFolder[]): string {
   for (const f of folders) {
     const cm = camelize(f.id);
     const constName = `${f.id.toUpperCase()}_PROMPT`;
+    const embConstName = `${f.id.toUpperCase()}_EMBEDDING`;
     lines.push(`  ${f.id}: {`);
     lines.push(`    manifest: ${cm}Manifest as unknown as SkillManifest,`);
     lines.push(`    prompt: ${constName},`);
     lines.push(`    context: ${cm}Context as any,`);
     lines.push(`    handlers: ${cm}Handlers as unknown as Record<string, ToolHandler>,`);
+    lines.push(`    descriptionEmbedding: ${embConstName},`);
     lines.push(`  },`);
   }
   lines.push("};");
@@ -131,17 +157,35 @@ function emit(folders: SkillFolder[]): string {
   return lines.join("\n");
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const names = discoverFolders();
-  const folders = names.map(readSkillFolder);
+  const bases = names.map(readSkillFolderBase);
 
   // Pre-check duplicate manifest ids
   const seen = new Map<string, string>();
-  for (const f of folders) {
+  for (const f of bases) {
     if (seen.has(f.manifestId)) {
       fail(`duplicate manifest.id "${f.manifestId}" — folders "${seen.get(f.manifestId)}" and "${f.id}"`);
     }
     seen.set(f.manifestId, f.id);
+  }
+
+  // FEAT067 — Compute description embeddings via the provider. The provider
+  // is the same one shipped to web; running it on Node here produces the
+  // exact vectors the web bundle will compare against query embeddings,
+  // ensuring dimension + value parity between index time and query time.
+  const { embed } = await import("../src/modules/embeddings/provider");
+  const folders: SkillFolder[] = [];
+  for (const b of bases) {
+    const vec = await embed(b.manifest.description);
+    if (!vec || vec.length !== 384) {
+      fail(`${b.id}: embedder returned ${vec ? `length ${vec.length}` : "null"} (expected Float32Array(384))`);
+    }
+    folders.push({
+      ...b,
+      descriptionEmbedding: Array.from(vec),
+    });
+    console.log(`[bundle-skills] embedded ${b.id} (${vec.length} dims)`);
   }
 
   if (!fs.existsSync(GENERATED_DIR)) {
@@ -155,4 +199,7 @@ function main(): void {
   console.log(`[bundle-skills] wrote ${folders.length} skills to ${path.relative(ROOT, OUTPUT_FILE)}`);
 }
 
-main();
+main().catch((err) => {
+  console.error("[bundle-skills] failed:", err);
+  process.exit(1);
+});

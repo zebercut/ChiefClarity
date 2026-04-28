@@ -241,6 +241,17 @@ async function buildSkillFromBundle(folderName: string, entry: typeof SKILL_BUND
   // export is absent; the dispatcher's WARN fallback handles that case.
   const toolSchemas = readToolSchemas(handlersModule);
 
+  // FEAT067 — Skill description embeddings are pre-computed at bundle time
+  // and shipped in SKILL_BUNDLE for both web and Node default loads. The
+  // runtime compute fallback below (in loadFromBundle) only fires when an
+  // older bundle without the field is in play (defensive — the field is now
+  // mandatory in the generated bundle).
+  let descriptionEmbedding: Float32Array | null = null;
+  const bundleEmbedding = (entry as { descriptionEmbedding?: ReadonlyArray<number> }).descriptionEmbedding;
+  if (bundleEmbedding && Array.isArray(bundleEmbedding) && bundleEmbedding.length === 384) {
+    descriptionEmbedding = new Float32Array(bundleEmbedding);
+  }
+
   return {
     manifest,
     prompt: entry.prompt,
@@ -248,7 +259,7 @@ async function buildSkillFromBundle(folderName: string, entry: typeof SKILL_BUND
     contextRequirements,
     handlers,
     toolSchemas,
-    descriptionEmbedding: null,
+    descriptionEmbedding,
   };
 }
 

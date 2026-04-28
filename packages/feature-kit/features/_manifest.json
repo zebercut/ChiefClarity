@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-04-28T02:30:43.071Z",
-  "count": 50,
+  "generatedAt": "2026-04-28T10:00:48.935Z",
+  "count": 51,
   "features": [
     {
       "id": "FEAT021",
@@ -466,6 +466,25 @@
         "triage",
         "production-bug",
         "real-llm-smoke"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT067",
+      "title": "Enable embeddings on web bundle",
+      "category": "Architecture/Infrastructure",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "embeddings",
+        "web",
+        "wasm",
+        "xenova",
+        "routing",
+        "rag-prep"
       ],
       "type": "feature",
       "complexity": null

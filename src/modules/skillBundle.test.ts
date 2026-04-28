@@ -191,6 +191,85 @@ async function run(): Promise<void> {
     assert.deepStrictEqual(bundleIds, EXPECTED_SKILL_IDS);
   });
 
+  section("FEAT067 — Skill embeddings shipped in bundle");
+
+  await test("each bundle entry has a 384-float descriptionEmbedding", () => {
+    for (const id of Object.keys(SKILL_BUNDLE)) {
+      const entry = SKILL_BUNDLE[id] as any;
+      assert.ok(
+        Array.isArray(entry.descriptionEmbedding),
+        `[${id}] descriptionEmbedding must be an array`
+      );
+      assert.strictEqual(
+        entry.descriptionEmbedding.length,
+        384,
+        `[${id}] descriptionEmbedding must be 384 floats (got ${entry.descriptionEmbedding.length})`
+      );
+      for (let i = 0; i < entry.descriptionEmbedding.length; i++) {
+        assert.strictEqual(
+          typeof entry.descriptionEmbedding[i],
+          "number",
+          `[${id}] descriptionEmbedding[${i}] must be a number`
+        );
+      }
+    }
+  });
+
+  await test("bundle embeddings are real (not all-zero-but-first stub)", () => {
+    // The pre-FEAT067 stub vectors were [1, 0, 0, ...]. Real embeddings
+    // from MiniLM are normalized 384-dim with most positions non-zero.
+    // Asserting a non-trivial number of non-zero entries catches the stub.
+    for (const id of Object.keys(SKILL_BUNDLE)) {
+      const entry = SKILL_BUNDLE[id] as any;
+      const vec: number[] = entry.descriptionEmbedding;
+      const nonZero = vec.filter((v) => v !== 0).length;
+      assert.ok(
+        nonZero > 100,
+        `[${id}] descriptionEmbedding has only ${nonZero} non-zero entries — looks like a stub`
+      );
+    }
+  });
+
+  await test("bundle embeddings differ between distinct skills", () => {
+    // Sanity: every skill should produce a distinct vector. If two are
+    // byte-equal, the codegen ran with a broken embedder.
+    const ids = Object.keys(SKILL_BUNDLE);
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const a = (SKILL_BUNDLE[ids[i]] as any).descriptionEmbedding as number[];
+        const b = (SKILL_BUNDLE[ids[j]] as any).descriptionEmbedding as number[];
+        let allEqual = true;
+        for (let k = 0; k < a.length; k++) {
+          if (a[k] !== b[k]) { allEqual = false; break; }
+        }
+        assert.ok(!allEqual, `${ids[i]} and ${ids[j]} have identical embeddings`);
+      }
+    }
+  });
+
+  await test("loadFromBundle populates descriptionEmbedding from the bundle", async () => {
+    _resetSkillRegistryForTests();
+    const reg = await loadSkillRegistry();
+    for (const skill of reg.getAllSkills()) {
+      assert.ok(
+        skill.descriptionEmbedding instanceof Float32Array,
+        `[${skill.manifest.id}] descriptionEmbedding must be a Float32Array after bundle load`
+      );
+      assert.strictEqual(
+        skill.descriptionEmbedding!.length,
+        384,
+        `[${skill.manifest.id}] descriptionEmbedding must be 384-dim`
+      );
+      // Real vector — not the stub [1,0,...].
+      const nonZero = Array.from(skill.descriptionEmbedding!).filter((v) => v !== 0).length;
+      assert.ok(
+        nonZero > 100,
+        `[${skill.manifest.id}] registry-loaded embedding looks like a stub (${nonZero} non-zero)`
+      );
+    }
+    _resetSkillRegistryForTests();
+  });
+
   console.log("");
   console.log(`  ${passed} passed, ${failed} failed`);
   if (failed > 0) process.exit(1);

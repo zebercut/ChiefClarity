@@ -962,6 +962,52 @@ async function run(): Promise<void> {
     }
   });
 
+  // ─── FEAT067 ────────────────────────────────────────────────────────────
+
+  section("FEAT067 — embedder shipped on web bundle");
+
+  await test("FEAT067: bundle-loaded registry has 384-dim embeddings on every skill", async () => {
+    _resetSkillRegistryForTests();
+    const reg = await loadSkillRegistry();
+    for (const skill of reg.getAllSkills()) {
+      assert.ok(
+        skill.descriptionEmbedding instanceof Float32Array,
+        `[${skill.manifest.id}] descriptionEmbedding must be a Float32Array`
+      );
+      assert.strictEqual(skill.descriptionEmbedding!.length, 384);
+    }
+    _resetSkillRegistryForTests();
+  });
+
+  await test("FEAT067: embedder injection still wins (back-compat)", async () => {
+    // Even with a real-embedding registry, RouteOptions.embedder must
+    // pre-empt the production embedder. Tests rely on injection to stay
+    // off the WASM cold path.
+    _resetSkillRegistryForTests();
+    const reg = await loadSkillRegistry();
+    let injectedCalled = false;
+    const result = await routeToSkill(
+      { phrase: "something completely off-trigger so the embedder is used" },
+      {
+        registry: reg,
+        embedder: async () => {
+          injectedCalled = true;
+          return null; // simulate "embedder unavailable" → falls back
+        },
+      }
+    );
+    assert.strictEqual(injectedCalled, true, "injected embedder must be called");
+    assert.strictEqual(result.routingMethod, "fallback");
+    _resetSkillRegistryForTests();
+  });
+
+  await test("FEAT067: provider exports 384-dim vectors on Node", async () => {
+    const { embed } = await import("./embeddings/provider");
+    const v = await embed("hello world from the router test");
+    assert.ok(v instanceof Float32Array);
+    assert.strictEqual(v!.length, 384);
+  });
+
   // ─── Summary ─────────────────────────────────────────────────────────────
 
   console.log(`\n${passed} passed, ${failed} failed`);

@@ -78,8 +78,8 @@ heavy lifting deterministic.
 | Component | Type | Status | File |
 |---|---|---|---|
 | **v4 Gate** | Pure function, Node-only check + pending-context guard | Shipped (FEAT056) | `src/modules/v4Gate.ts` |
-| **Orchestrator (router)** | Embedding-first match + Haiku tiebreaker + `general_assistant` final fallback | Shipped (FEAT051) | `src/modules/router.ts` (`routeToSkill`, `setV4SkillsEnabled`) |
-| **Skill Registry** | Folder-based config, auto-loaded on boot, locked-zone parsing, embedding cache | Shipped (FEAT054) | `src/modules/skillRegistry.ts` + `src/skills/<id>/` |
+| **Orchestrator (router)** | Triage-hint primary (FEAT066) + structural-trigger + embedding match + Haiku tiebreaker + `general_assistant` final fallback. Embedding step now lights up on web (FEAT067) — `@xenova/transformers` runs in-browser via WASM. | Shipped (FEAT051 + FEAT066 + FEAT067) | `src/modules/router.ts` (`routeToSkill`, `setV4SkillsEnabled`) |
+| **Skill Registry** | Folder-based config, auto-loaded on boot, locked-zone parsing. Skill `descriptionEmbedding` is pre-computed at bundle time (FEAT067) and shipped in `SKILL_BUNDLE` for both web and Node — no `if (isNode())` runtime gate. | Shipped (FEAT054 + FEAT067) | `src/modules/skillRegistry.ts` + `src/skills/<id>/` |
 | **Skill Dispatcher** | Gates on `getV4SkillsEnabled()`, resolves context, ONE LLM call, dispatches to handler with `ctx.state` | Shipped (FEAT055 + FEAT061) | `src/modules/skillDispatcher.ts` |
 | **Assembler (legacy + minimal v4 resolver)** | Per-intent switch (legacy) + minimal resolver in dispatcher (v4); full declarative version still proposed | Partial — full version is Phase 3 | `src/modules/assembler.ts`, `src/modules/skillDispatcher.ts:resolveContext` |
 | **LLM Dispatcher (legacy)** | `MODEL_BY_INTENT` + `SONNET_FALLBACK_INTENTS`, used by every non-migrated intent | Refactor — legacy still in place per dual-path migration | `src/modules/llm.ts` |

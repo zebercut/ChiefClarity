@@ -1,0 +1,26 @@
+{
+  "id": "FEAT067",
+  "title": "Enable embeddings on web bundle",
+  "category": "Architecture/Infrastructure",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v2.02",
+  "createdAt": "2026-04-28T03:10:41.506Z",
+  "updatedAt": "2026-04-28T10:00:48.891Z",
+  "tags": [
+    "embeddings",
+    "web",
+    "wasm",
+    "xenova",
+    "routing",
+    "rag-prep"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}
