@@ -27,7 +27,7 @@
   "promptLockedZones": [],
   "surface": null,
   "retrievalHook": {
-    "sources": ["note", "topic", "contextMemory"],
+    "sources": ["note", "topic", "contextMemory", "event", "task", "observation"],
     "k": 5,
     "minScore": 0.25,
     "minScoreInclude": 0.40

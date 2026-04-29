@@ -269,7 +269,14 @@ async function run(): Promise<void> {
     assert.ok(il, "info_lookup missing from SKILL_BUNDLE");
     const rh = (il.manifest as any).retrievalHook;
     assert.ok(rh, "info_lookup manifest must declare retrievalHook");
-    assert.deepStrictEqual(rh.sources, ["note", "topic", "contextMemory"]);
+    // FEAT074: sources expanded to include "event" (calendar projector
+    // FEAT072 emits chunks under that source). "task" and "observation"
+    // are forward-compat — no projector ships for them yet, so they're
+    // dead config until those projectors land. The widened allowlist is
+    // still a strict subset of ChunkSource and stays declarative.
+    assert.deepStrictEqual(rh.sources, [
+      "note", "topic", "contextMemory", "event", "task", "observation",
+    ]);
     assert.strictEqual(rh.k, 5);
     assert.strictEqual(rh.minScore, 0.25);
     assert.strictEqual(rh.minScoreInclude, 0.40);

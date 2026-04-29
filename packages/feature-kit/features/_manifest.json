@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-04-29T03:00:32.803Z",
-  "count": 57,
+  "generatedAt": "2026-04-29T03:08:41.690Z",
+  "count": 58,
   "features": [
     {
       "id": "FEAT021",
@@ -594,6 +594,23 @@
         "calendar",
         "projector",
         "calibration"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT074",
+      "title": "Widen info_lookup retrievalHook to event task observation sources",
+      "category": "Bug Fix",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "rag",
+        "info_lookup",
+        "retrieval",
+        "calendar"
       ],
       "type": "feature",
       "complexity": null
