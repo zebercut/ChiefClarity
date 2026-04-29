@@ -80,8 +80,11 @@ recoverable on next backfill.
 Adding a new skill that owns data the user wants searchable is therefore
 a one-file change inside the skill folder — no edits to `backfill.ts`,
 `executor.ts`, `skillRegistry.ts`, or `bundle-skills.ts`. Shipped projectors
-today: `notes` (in `notes_capture/`), `contextMemory` (in `inbox_triage/`).
-Calendar / events are deferred to a follow-up FEAT.
+today: `notes` (in `notes_capture/`), `contextMemory` (in `inbox_triage/`),
+`calendar` events (in `calendar_management/`, FEAT072). The calendar
+projector skips cancelled / archived events, embeds `title + notes`, and
+carries `datetime` plus `isRecurringInstance` in metadata so `info_lookup`
+can answer free-form questions like *"when was my meeting with X?"*.
 
 ---
 

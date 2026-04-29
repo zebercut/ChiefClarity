@@ -7,6 +7,7 @@ import type { RagProjector } from "../../types/rag";
 import * as calendarManagementContext from "../calendar_management/context";
 import * as calendarManagementHandlers from "../calendar_management/handlers";
 import calendarManagementManifest from "../calendar_management/manifest.json";
+import * as calendarManagementProjector from "../calendar_management/projector";
 import * as emotionalCheckinContext from "../emotional_checkin/context";
 import * as emotionalCheckinHandlers from "../emotional_checkin/handlers";
 import emotionalCheckinManifest from "../emotional_checkin/manifest.json";
@@ -614,6 +615,7 @@ export const SKILL_BUNDLE: Record<string, BundledSkill> = {
     context: calendarManagementContext as any,
     handlers: calendarManagementHandlers as unknown as Record<string, ToolHandler>,
     descriptionEmbedding: CALENDAR_MANAGEMENT_EMBEDDING,
+    projector: calendarManagementProjector as any,
   },
   emotional_checkin: {
     manifest: emotionalCheckinManifest as unknown as SkillManifest,

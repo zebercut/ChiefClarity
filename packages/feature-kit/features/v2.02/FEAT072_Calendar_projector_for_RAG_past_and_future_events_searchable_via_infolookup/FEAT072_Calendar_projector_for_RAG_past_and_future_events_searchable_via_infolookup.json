@@ -1,0 +1,24 @@
+{
+  "id": "FEAT072",
+  "title": "Calendar projector for RAG (past and future events searchable via info_lookup)",
+  "category": "Feature",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v2.02",
+  "createdAt": "2026-04-29T02:34:45.070Z",
+  "updatedAt": "2026-04-29T02:37:15.593Z",
+  "tags": [
+    "rag",
+    "calendar",
+    "projector",
+    "info_lookup"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

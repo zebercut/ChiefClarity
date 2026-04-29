@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-04-29T02:23:17.168Z",
-  "count": 55,
+  "generatedAt": "2026-04-29T02:37:15.629Z",
+  "count": 56,
   "features": [
     {
       "id": "FEAT021",
@@ -559,6 +559,23 @@
         "skills",
         "registry",
         "architecture",
+        "info_lookup"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT072",
+      "title": "Calendar projector for RAG (past and future events searchable via info_lookup)",
+      "category": "Feature",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "rag",
+        "calendar",
+        "projector",
         "info_lookup"
       ],
       "type": "feature",

@@ -553,9 +553,10 @@ the import into `_generated/skillBundle.ts`. No new build step.
 
 ### Shipped projectors today
 
-| Schema          | Projector lives in                           |
-|-----------------|----------------------------------------------|
-| `notes`         | `src/skills/notes_capture/projector.ts`      |
-| `contextMemory` | `src/skills/inbox_triage/projector.ts`       |
+| Schema          | Projector lives in                              | Source key      |
+|-----------------|-------------------------------------------------|-----------------|
+| `notes`         | `src/skills/notes_capture/projector.ts`         | `note`          |
+| `contextMemory` | `src/skills/inbox_triage/projector.ts`          | `contextMemory` |
+| `calendar`      | `src/skills/calendar_management/projector.ts`   | `event`         |
 
-Calendar / events deferred to a follow-up FEAT.
+The calendar projector skips `status === "cancelled"` and `archived === true` events; embeds `title + notes`; carries `datetime` / `durationMinutes` / `status` / `isRecurringInstance` in metadata.

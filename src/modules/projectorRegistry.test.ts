@@ -138,6 +138,99 @@ async function run(): Promise<void> {
     assert.strictEqual(projected[3], null, "missing id must project to null");
   });
 
+  section("ship'd projectors — calendar_management (FEAT072)");
+
+  await test("calendar projector exposes schema=calendar source=event", async () => {
+    const { projector } = await import("../skills/calendar_management/projector");
+    assert.strictEqual(projector.schema, "calendar");
+    assert.strictEqual(projector.source, "event");
+  });
+
+  await test("calendar projector iterates state.calendar.events", async () => {
+    const { projector } = await import("../skills/calendar_management/projector");
+    const fakeState = {
+      calendar: {
+        events: [
+          { id: "e1", title: "A" },
+          { id: "e2", title: "B" },
+        ],
+      },
+    };
+    const items = Array.from(projector.iterate(fakeState));
+    assert.strictEqual(items.length, 2);
+  });
+
+  await test("calendar projector skips cancelled / archived / missing-id events", async () => {
+    const { projector } = await import("../skills/calendar_management/projector");
+    assert.strictEqual(
+      projector.project({ id: "e1", title: "Standup", status: "cancelled" } as any),
+      null
+    );
+    assert.strictEqual(
+      projector.project({ id: "e2", title: "Standup", archived: true } as any),
+      null
+    );
+    assert.strictEqual(
+      projector.project({ id: "", title: "Standup", status: "scheduled" } as any),
+      null
+    );
+    assert.strictEqual(
+      projector.project({ id: "e4", title: "", status: "scheduled" } as any),
+      null
+    );
+  });
+
+  await test("calendar projector composes title + notes and carries metadata", async () => {
+    const { projector } = await import("../skills/calendar_management/projector");
+    const out = projector.project({
+      id: "e1",
+      title: "Sync with Contact A",
+      datetime: "2026-04-15T15:00:00",
+      durationMinutes: 30,
+      status: "scheduled",
+      notes: "discuss Project X status",
+      isRecurringInstance: false,
+    } as any);
+    assert.ok(out);
+    assert.strictEqual(out!.sourceId, "e1");
+    assert.strictEqual(out!.text, "Sync with Contact A — discuss Project X status");
+    assert.deepStrictEqual(out!.metadata, {
+      datetime: "2026-04-15T15:00:00",
+      durationMinutes: 30,
+      status: "scheduled",
+      isRecurringInstance: false,
+    });
+  });
+
+  await test("calendar projector handles events with no notes", async () => {
+    const { projector } = await import("../skills/calendar_management/projector");
+    const out = projector.project({
+      id: "e2",
+      title: "Quick check-in",
+      datetime: "2026-04-15T10:00:00",
+      durationMinutes: 15,
+      status: "scheduled",
+      notes: "",
+    } as any);
+    assert.ok(out);
+    assert.strictEqual(out!.text, "Quick check-in");
+  });
+
+  await test("calendar projector flags isRecurringInstance in metadata", async () => {
+    const { projector } = await import("../skills/calendar_management/projector");
+    const out = projector.project({
+      id: "e3",
+      title: "Weekly Class",
+      datetime: "2026-04-15T18:00:00",
+      durationMinutes: 60,
+      status: "scheduled",
+      notes: "",
+      isRecurringInstance: true,
+    } as any);
+    assert.ok(out);
+    assert.strictEqual(out!.metadata!.isRecurringInstance, true);
+  });
+
   section("ship'd projectors — inbox_triage (contextMemory)");
 
   await test("contextMemory projector handles both string and Fact items", async () => {
