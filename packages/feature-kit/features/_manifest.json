@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-04-29T02:37:15.629Z",
-  "count": 56,
+  "generatedAt": "2026-04-29T03:00:32.803Z",
+  "count": 57,
   "features": [
     {
       "id": "FEAT021",
@@ -577,6 +577,23 @@
         "calendar",
         "projector",
         "info_lookup"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT073",
+      "title": "Calendar projector indexes archived and cancelled events",
+      "category": "Bug Fix",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "rag",
+        "calendar",
+        "projector",
+        "calibration"
       ],
       "type": "feature",
       "complexity": null

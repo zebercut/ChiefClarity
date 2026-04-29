@@ -1,0 +1,24 @@
+{
+  "id": "FEAT073",
+  "title": "Calendar projector indexes archived and cancelled events",
+  "category": "Bug Fix",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v2.02",
+  "createdAt": "2026-04-29T03:00:30.526Z",
+  "updatedAt": "2026-04-29T03:00:32.768Z",
+  "tags": [
+    "rag",
+    "calendar",
+    "projector",
+    "calibration"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

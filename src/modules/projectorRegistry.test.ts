@@ -160,16 +160,10 @@ async function run(): Promise<void> {
     assert.strictEqual(items.length, 2);
   });
 
-  await test("calendar projector skips cancelled / archived / missing-id events", async () => {
+  await test("calendar projector skips only missing-id / missing-title events", async () => {
     const { projector } = await import("../skills/calendar_management/projector");
-    assert.strictEqual(
-      projector.project({ id: "e1", title: "Standup", status: "cancelled" } as any),
-      null
-    );
-    assert.strictEqual(
-      projector.project({ id: "e2", title: "Standup", archived: true } as any),
-      null
-    );
+    // FEAT073: archived and cancelled events ARE indexed now (dropped the
+    // skip filters). Only true identity gaps cause project() to return null.
     assert.strictEqual(
       projector.project({ id: "", title: "Standup", status: "scheduled" } as any),
       null
@@ -178,6 +172,36 @@ async function run(): Promise<void> {
       projector.project({ id: "e4", title: "", status: "scheduled" } as any),
       null
     );
+  });
+
+  await test("calendar projector indexes archived events with archived:true in metadata", async () => {
+    const { projector } = await import("../skills/calendar_management/projector");
+    const out = projector.project({
+      id: "old1",
+      title: "Old meeting with Contact A",
+      datetime: "2025-01-15T15:00:00",
+      durationMinutes: 30,
+      status: "scheduled",
+      notes: "",
+      archived: true,
+    } as any);
+    assert.ok(out, "archived events must NOT be skipped (FEAT073)");
+    assert.strictEqual(out!.sourceId, "old1");
+    assert.strictEqual(out!.metadata!.archived, true);
+  });
+
+  await test("calendar projector indexes cancelled events with status in metadata", async () => {
+    const { projector } = await import("../skills/calendar_management/projector");
+    const out = projector.project({
+      id: "cx1",
+      title: "Cancelled sync",
+      datetime: "2026-03-01T10:00:00",
+      durationMinutes: 30,
+      status: "cancelled",
+      notes: "",
+    } as any);
+    assert.ok(out, "cancelled events must NOT be skipped (FEAT073)");
+    assert.strictEqual(out!.metadata!.status, "cancelled");
   });
 
   await test("calendar projector composes title + notes and carries metadata", async () => {
@@ -198,6 +222,7 @@ async function run(): Promise<void> {
       datetime: "2026-04-15T15:00:00",
       durationMinutes: 30,
       status: "scheduled",
+      archived: false,
       isRecurringInstance: false,
     });
   });

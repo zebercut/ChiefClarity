@@ -7,16 +7,22 @@
  * stable `id`s, so `sourceId` is the event id and edits / reschedules
  * upsert in place.
  *
- * Calls baked in (see FEAT072 spec for rationale):
- *   - No date window. Every non-cancelled, non-archived event is
- *     indexed. The retriever returns top-K so query-time cost stays
- *     flat as the calendar grows.
+ * Calls baked in (FEAT072 + FEAT073 calibration):
+ *   - No date window. Every event is indexed regardless of date. The
+ *     retriever returns top-K so query-time cost stays flat as the
+ *     calendar grows.
+ *   - Index archived and cancelled events too. dataHygiene sets
+ *     `archived: true` on past events to keep the active calendar UI
+ *     clean — but free-form lookup ("when did I meet Fagner?") is
+ *     EXACTLY the use case where archived events should resurface.
+ *     Cancelled events are kept for the same reason ("what was that
+ *     meeting I cancelled with X?"). Status and archived flags ride
+ *     along in metadata so the LLM (or future query-time filters)
+ *     can reason about them when answering.
  *   - All recurring instances indexed. Each instance is already its
  *     own row in `state.calendar.events`; the `isRecurringInstance`
  *     flag rides along in metadata so the LLM can collapse duplicate
  *     near-identical citations when answering.
- *   - Skip `status === "cancelled"` and `archived === true`. The user
- *     doesn't want killed meetings surfaced.
  *
  * Embedding text composition: `title` + `notes` joined with " — ".
  * Person names tend to live in the title; the optional notes field
@@ -37,7 +43,6 @@ export const projector: RagProjector<CalendarEvent> = {
   },
   project: (event) => {
     if (!event?.id || !event.title) return null;
-    if (event.status === "cancelled" || event.archived) return null;
 
     const text = [event.title, event.notes]
       .filter((s) => typeof s === "string" && s.trim().length > 0)
@@ -52,6 +57,7 @@ export const projector: RagProjector<CalendarEvent> = {
         datetime: event.datetime,
         durationMinutes: event.durationMinutes,
         status: event.status,
+        archived: event.archived ?? false,
         isRecurringInstance: event.isRecurringInstance ?? false,
       },
     };
