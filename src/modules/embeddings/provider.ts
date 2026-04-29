@@ -42,7 +42,8 @@ async function getPipeline(): Promise<any> {
     //   the cache forces a clean network fetch every time. The browser's
     //   HTTP cache layer still de-duplicates the ~80MB MiniLM weights
     //   across reloads, so we don't pay the full download repeatedly.
-    if (typeof window !== "undefined" && env) {
+    const g = globalThis as any;
+    if (typeof g.window !== "undefined" && env) {
       env.allowLocalModels = false;
       env.allowRemoteModels = true;
       env.useBrowserCache = false;
@@ -51,9 +52,9 @@ async function getPipeline(): Promise<any> {
     // Wipe the poisoned cache once per page load. Idempotent and cheap
     // when the cache is already clean. Safe in Node (caches is undefined
     // there — Node falls through env.useBrowserCache anyway).
-    if (typeof caches !== "undefined") {
+    if (typeof g.caches !== "undefined") {
       try {
-        await caches.delete("transformers-cache");
+        await g.caches.delete("transformers-cache");
       } catch {
         // ignore — cache may not exist or origin may forbid access
       }

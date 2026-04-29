@@ -14,10 +14,15 @@ src/skills/
     prompt.md         # specialist system prompt (the skill's "brain")
     context.ts        # declares what context this skill needs
     handlers.ts       # TypeScript functions that execute tool calls
+    projector.ts      # OPTIONAL — RAG projector for skills that own a
+                      # write schema and want their data discoverable via
+                      # info_lookup (FEAT071). See §11.
 ```
 
-Every file is required. The registry loader validates all four on boot and rejects
-malformed skills with a startup warning (non-fatal — other skills still load).
+The first four files are required. The registry loader validates them on
+boot and rejects malformed skills with a startup warning (non-fatal — other
+skills still load). `projector.ts` is optional; when present, the skill
+registry registers it into the RAG projector registry at boot.
 
 ---
 
@@ -239,9 +244,17 @@ export const request_clarification: ToolHandler = async (args) => {
    - One export per tool in manifest.json
    - All writes via filesystem.ts
 
-6. Restart the app
+6. (Optional) Write projector.ts
+   - Only if the skill writes data the user should be able to ask
+     about through info_lookup (free-form retrieval).
+   - See §11 for the contract. One projector per schema across the
+     whole app — collisions warn, first registration wins.
+
+7. Restart the app
    Registry auto-loads, orchestrator can now route to the new skill.
-   No changes to router.ts, assembler.ts, llm.ts, or executor.ts.
+   No changes to router.ts, assembler.ts, llm.ts, executor.ts, or
+   backfill.ts — adding a projector is the only way new data flows
+   into RAG, and it's a one-file change inside the skill folder.
 ```
 
 ---
@@ -488,3 +501,61 @@ three skills need the same helper or the helpers grow non-trivial logic.
 Premature centralization was explicitly deferred per FEAT060 PM rule and
 re-confirmed by FEAT063. If `_shared/defaults.ts` is ever introduced, all
 importing skills migrate together.
+
+---
+
+## 11. RAG projector (FEAT071) — optional `projector.ts`
+
+A skill that writes data the user expects to be searchable through
+`info_lookup` ships an optional `projector.ts` next to its manifest.
+The projector is the contract between the skill (which owns the data
+shape) and the RAG indexer (which doesn't and shouldn't).
+
+```ts
+// src/skills/<skill_id>/projector.ts
+import type { RagProjector } from "../../types/rag";
+
+export const projector: RagProjector<MyItem> = {
+  schema: "<top-level state key>",   // e.g. "notes", "calendar"
+  source: "<ChunkSource>",           // e.g. "note", "event"
+  iterate: (state) => state[schema], // sync, pure
+  project: (item) => ({
+    sourceId: item.id,               // stable id preferred; content hash if no id
+    text: "...",                     // whatever you want embedded
+    metadata: { ... },               // optional, surfaced via RetrievalResult
+  }),
+};
+```
+
+A skill that ships multiple projectors (rare) exports `projectors:
+ReadonlyArray<RagProjector>` instead of `projector`.
+
+### Where projectors run
+
+- **Boot**: `skillRegistry` calls `registerProjector(p)` for each projector
+  found in a skill's bundle entry. One projector per `schema` across the
+  whole app — collisions log a warn and keep the first registration.
+- **Backfill**: `src/modules/rag/backfill.ts` iterates the projector
+  registry rather than carrying hardcoded `state.notes` /
+  `state.contextMemory` knowledge. New data sources plug in by adding
+  `projector.ts` to a skill folder; backfill code never changes.
+- **Live re-index**: `src/modules/executor.ts:applyWrites` fires the RAG
+  hook after every add/update/delete (`src/modules/rag/writeHook.ts`).
+  Add/update reproject + upsert via `indexEntity`; delete calls
+  `deindexEntity` keyed by the projector's `source` and the write's `id`.
+  Failures are logged and swallowed so RAG drift never blocks an
+  executor write.
+
+### Bundling
+
+`scripts/bundle-skills.ts` detects `projector.ts` automatically and emits
+the import into `_generated/skillBundle.ts`. No new build step.
+
+### Shipped projectors today
+
+| Schema          | Projector lives in                           |
+|-----------------|----------------------------------------------|
+| `notes`         | `src/skills/notes_capture/projector.ts`      |
+| `contextMemory` | `src/skills/inbox_triage/projector.ts`       |
+
+Calendar / events deferred to a follow-up FEAT.

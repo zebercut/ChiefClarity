@@ -19,6 +19,8 @@
 import { isNode } from "../utils/platform";
 import { sha256Hex } from "../utils/sha256";
 import { SKILL_BUNDLE } from "../skills/_generated/skillBundle";
+import { registerProjector } from "./rag/projectorRegistry";
+import type { RagProjector } from "../types/rag";
 
 type FsLike = typeof import("fs");
 type PathLike = typeof import("path");
@@ -252,6 +254,18 @@ async function buildSkillFromBundle(folderName: string, entry: typeof SKILL_BUND
     descriptionEmbedding = new Float32Array(bundleEmbedding);
   }
 
+  // FEAT071 — Optional projector module. A skill that owns a write schema
+  // and wants its data discoverable via `info_lookup` ships `projector.ts`
+  // exporting `projector` (single) or `projectors` (array). Registered into
+  // the global registry; collisions on `schema` warn and keep the first.
+  const projectorModule = (entry as { projector?: Record<string, unknown> }).projector;
+  if (projectorModule) {
+    const collected = collectProjectors(projectorModule, folderName);
+    for (const p of collected) {
+      registerProjector(p);
+    }
+  }
+
   return {
     manifest,
     prompt: entry.prompt,
@@ -261,6 +275,37 @@ async function buildSkillFromBundle(folderName: string, entry: typeof SKILL_BUND
     toolSchemas,
     descriptionEmbedding,
   };
+}
+
+function collectProjectors(
+  module: Record<string, unknown>,
+  folderName: string
+): RagProjector[] {
+  const out: RagProjector[] = [];
+  const single = module.projector;
+  const list = module.projectors;
+  if (single && isProjector(single)) out.push(single as RagProjector);
+  if (Array.isArray(list)) {
+    for (const p of list) if (isProjector(p)) out.push(p as RagProjector);
+  }
+  if (out.length === 0) {
+    console.warn(
+      `[skillRegistry] ${folderName}/projector.ts present but no valid ` +
+      `\`projector\` or \`projectors\` export found`
+    );
+  }
+  return out;
+}
+
+function isProjector(x: unknown): x is RagProjector {
+  if (!x || typeof x !== "object") return false;
+  const p = x as Record<string, unknown>;
+  return (
+    typeof p.schema === "string" &&
+    typeof p.source === "string" &&
+    typeof p.iterate === "function" &&
+    typeof p.project === "function"
+  );
 }
 
 function readToolSchemas(handlersModule: Record<string, unknown>): Record<string, SkillTool> {
@@ -472,6 +517,20 @@ async function loadOneSkill(
   } else {
     descriptionEmbedding = await computeEmbedding(manifest.description);
     // Note: cache write happens in the caller (doLoad) so all updates batch.
+  }
+
+  // FEAT071 — Optional projector module on the fs path (live reload).
+  const projectorPath = path.join(folderPath, "projector.ts");
+  if (fs.existsSync(projectorPath)) {
+    try {
+      const projectorModule = dynRequire(path.resolve(projectorPath));
+      const collected = collectProjectors(projectorModule, folderName);
+      for (const p of collected) registerProjector(p);
+    } catch (err: any) {
+      console.warn(
+        `[skillRegistry] ${folderName}/projector.ts import failed: ${err?.message ?? err}`
+      );
+    }
   }
 
   return {

@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-04-29T01:54:28.032Z",
-  "count": 54,
+  "generatedAt": "2026-04-29T02:23:17.168Z",
+  "count": 55,
   "features": [
     {
       "id": "FEAT021",
@@ -542,6 +542,24 @@
         "metro",
         "xenova",
         "routing"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT071",
+      "title": "RAG projector registry — generic indexing for skill-owned data sources",
+      "category": "Architecture",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "rag",
+        "skills",
+        "registry",
+        "architecture",
+        "info_lookup"
       ],
       "type": "feature",
       "complexity": null

@@ -2,6 +2,7 @@
 // Regenerate via: npm run bundle:skills
 
 import type { SkillManifest, ContextRequirements, ToolHandler } from "../../types/skills";
+import type { RagProjector } from "../../types/rag";
 
 import * as calendarManagementContext from "../calendar_management/context";
 import * as calendarManagementHandlers from "../calendar_management/handlers";
@@ -15,12 +16,14 @@ import generalAssistantManifest from "../general_assistant/manifest.json";
 import * as inboxTriageContext from "../inbox_triage/context";
 import * as inboxTriageHandlers from "../inbox_triage/handlers";
 import inboxTriageManifest from "../inbox_triage/manifest.json";
+import * as inboxTriageProjector from "../inbox_triage/projector";
 import * as infoLookupContext from "../info_lookup/context";
 import * as infoLookupHandlers from "../info_lookup/handlers";
 import infoLookupManifest from "../info_lookup/manifest.json";
 import * as notesCaptureContext from "../notes_capture/context";
 import * as notesCaptureHandlers from "../notes_capture/handlers";
 import notesCaptureManifest from "../notes_capture/manifest.json";
+import * as notesCaptureProjector from "../notes_capture/projector";
 import * as priorityPlanningContext from "../priority_planning/context";
 import * as priorityPlanningHandlers from "../priority_planning/handlers";
 import priorityPlanningManifest from "../priority_planning/manifest.json";
@@ -600,6 +603,8 @@ export interface BundledSkill {
   handlers: Record<string, ToolHandler>;
   /** FEAT067 — 384-dim description embedding pre-computed at bundle time. */
   descriptionEmbedding: ReadonlyArray<number>;
+  /** FEAT071 — optional projector module (single `projector` or `projectors[]`). */
+  projector?: { projector?: RagProjector; projectors?: ReadonlyArray<RagProjector> } & Record<string, unknown>;
 }
 
 export const SKILL_BUNDLE: Record<string, BundledSkill> = {
@@ -630,6 +635,7 @@ export const SKILL_BUNDLE: Record<string, BundledSkill> = {
     context: inboxTriageContext as any,
     handlers: inboxTriageHandlers as unknown as Record<string, ToolHandler>,
     descriptionEmbedding: INBOX_TRIAGE_EMBEDDING,
+    projector: inboxTriageProjector as any,
   },
   info_lookup: {
     manifest: infoLookupManifest as unknown as SkillManifest,
@@ -644,6 +650,7 @@ export const SKILL_BUNDLE: Record<string, BundledSkill> = {
     context: notesCaptureContext as any,
     handlers: notesCaptureHandlers as unknown as Record<string, ToolHandler>,
     descriptionEmbedding: NOTES_CAPTURE_EMBEDDING,
+    projector: notesCaptureProjector as any,
   },
   priority_planning: {
     manifest: priorityPlanningManifest as unknown as SkillManifest,

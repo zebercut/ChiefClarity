@@ -32,6 +32,7 @@ interface SkillFolder {
   manifest: any;
   promptText: string;
   descriptionEmbedding: number[]; // FEAT067: 384 floats
+  hasProjector: boolean;          // FEAT071: optional projector.ts present
 }
 
 function fail(msg: string): never {
@@ -55,6 +56,7 @@ function readSkillFolderBase(folderName: string): {
   manifestId: string;
   manifest: any;
   promptText: string;
+  hasProjector: boolean;
 } {
   const folderPath = path.join(SKILLS_DIR, folderName);
   for (const f of REQUIRED_FILES) {
@@ -76,7 +78,8 @@ function readSkillFolderBase(folderName: string): {
     fail(`${folderName}: manifest.description missing or not a string`);
   }
   const promptText = fs.readFileSync(path.join(folderPath, "prompt.md"), "utf-8");
-  return { id: folderName, manifestId: manifest.id, manifest, promptText };
+  const hasProjector = fs.existsSync(path.join(folderPath, "projector.ts"));
+  return { id: folderName, manifestId: manifest.id, manifest, promptText, hasProjector };
 }
 
 function escapeForRawTemplate(s: string): string {
@@ -95,6 +98,7 @@ function emit(folders: SkillFolder[]): string {
   lines.push("// Regenerate via: npm run bundle:skills");
   lines.push("");
   lines.push('import type { SkillManifest, ContextRequirements, ToolHandler } from "../../types/skills";');
+  lines.push('import type { RagProjector } from "../../types/rag";');
   lines.push("");
 
   // Imports — alphabetical
@@ -103,6 +107,9 @@ function emit(folders: SkillFolder[]): string {
     lines.push(`import * as ${cm}Context from "../${f.id}/context";`);
     lines.push(`import * as ${cm}Handlers from "../${f.id}/handlers";`);
     lines.push(`import ${cm}Manifest from "../${f.id}/manifest.json";`);
+    if (f.hasProjector) {
+      lines.push(`import * as ${cm}Projector from "../${f.id}/projector";`);
+    }
   }
   lines.push("");
 
@@ -135,6 +142,8 @@ function emit(folders: SkillFolder[]): string {
   lines.push("  handlers: Record<string, ToolHandler>;");
   lines.push("  /** FEAT067 — 384-dim description embedding pre-computed at bundle time. */");
   lines.push("  descriptionEmbedding: ReadonlyArray<number>;");
+  lines.push("  /** FEAT071 — optional projector module (single `projector` or `projectors[]`). */");
+  lines.push("  projector?: { projector?: RagProjector; projectors?: ReadonlyArray<RagProjector> } & Record<string, unknown>;");
   lines.push("}");
   lines.push("");
 
@@ -150,6 +159,9 @@ function emit(folders: SkillFolder[]): string {
     lines.push(`    context: ${cm}Context as any,`);
     lines.push(`    handlers: ${cm}Handlers as unknown as Record<string, ToolHandler>,`);
     lines.push(`    descriptionEmbedding: ${embConstName},`);
+    if (f.hasProjector) {
+      lines.push(`    projector: ${cm}Projector as any,`);
+    }
     lines.push(`  },`);
   }
   lines.push("};");

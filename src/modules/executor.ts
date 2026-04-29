@@ -7,6 +7,7 @@ import type { AppState, ActionPlan, FileKey, OkrObjective, OkrKeyResult, TopicSi
 import { computeKrOutcome, computeKrActivity, buildTaskStats } from "../types";
 import { getUserToday, nowLocalIso, WEEKDAY_MAP } from "../utils/dates";
 import { slugifyTopic, appendToTopicFile, migrateFactsToTopic, updateSuggestions, recordSignal, updateTopicPagesFromBrief } from "./topicManager";
+import { fireRagWriteHook } from "./rag/writeHook";
 
 /** Maximum items per array in any data file — prevents LLM from bloating state */
 const MAX_ARRAY_ITEMS = 1000;
@@ -80,6 +81,11 @@ export async function applyWrites(
     const writeId = write.id || (write.data.id as string) || "";
 
     state._dirty.add(fileKey);
+
+    // FEAT071 — fire-and-forget RAG re-index for this write. The hook is a
+    // no-op when no projector is registered for fileKey (e.g. tasks today),
+    // and never throws — relational write integrity wins over RAG drift.
+    void fireRagWriteHook(write.action, fileKey, write.data, writeId);
 
     if (writeId && (fileKey === "tasks" || fileKey === "calendar" || fileKey === "contextMemory")) {
       appliedWrites.push({ fileKey, id: writeId });

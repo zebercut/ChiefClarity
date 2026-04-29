@@ -1,0 +1,25 @@
+{
+  "id": "FEAT071",
+  "title": "RAG projector registry — generic indexing for skill-owned data sources",
+  "category": "Architecture",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v2.02",
+  "createdAt": "2026-04-29T02:11:54.789Z",
+  "updatedAt": "2026-04-29T02:23:17.132Z",
+  "tags": [
+    "rag",
+    "skills",
+    "registry",
+    "architecture",
+    "info_lookup"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}

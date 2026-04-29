@@ -51,6 +51,38 @@ The new vector index is a SEPARATE store. Both coexist; the vector index
 supersedes `contentIndex` functionally, but the file remains as a
 state-shape placeholder for backwards compatibility.
 
+**Status (FEAT071 — projector registry):** The RAG ingestion side is now
+skill-driven. Each skill that owns a write schema and wants its data
+discoverable through `info_lookup` ships an optional `projector.ts`
+alongside its manifest:
+
+```ts
+// src/skills/<skill>/projector.ts
+export const projector: RagProjector<MyItem> = {
+  schema: "<top-level state key>",     // e.g. "notes", "calendar"
+  source: "<ChunkSource>",             // e.g. "note", "event"
+  iterate: (state) => state[schema],   // sync, pure
+  project: (item) => ({ sourceId, text, metadata? }),
+};
+```
+
+The skill registry registers projectors at boot into a global map keyed
+by `schema` (collisions log a warn, first wins).
+`src/modules/rag/backfill.ts` iterates the registry instead of hardcoding
+`state.notes` / `state.contextMemory` paths. The executor write hook
+(`src/modules/rag/writeHook.ts`) fires after every add/update/delete:
+add/update reproject + upsert via `indexEntity` (deterministic chunkId
+means edits land on the same chunk); delete calls `deindexEntity` keyed
+by the projector's `source` and the write's `id`. Failures are logged
+and swallowed — relational write integrity is paramount, RAG drift is
+recoverable on next backfill.
+
+Adding a new skill that owns data the user wants searchable is therefore
+a one-file change inside the skill folder — no edits to `backfill.ts`,
+`executor.ts`, `skillRegistry.ts`, or `bundle-skills.ts`. Shipped projectors
+today: `notes` (in `notes_capture/`), `contextMemory` (in `inbox_triage/`).
+Calendar / events are deferred to a follow-up FEAT.
+
 ---
 
 ## 1. Attachment lifetimes

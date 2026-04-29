@@ -79,3 +79,36 @@ export interface RetrievalHook {
   /** Default 800ms when omitted. */
   softTimeoutMs?: number;
 }
+
+/**
+ * FEAT071 — RAG projector contract.
+ *
+ * Each skill that owns a write schema and wants its data discoverable
+ * through `info_lookup` ships one of these (file: `projector.ts` next to
+ * the manifest). The skill registry registers them at boot; backfill
+ * iterates them; the executor write path fires the matching projector on
+ * every add/update/delete so freshness is live.
+ *
+ * Contract intentionally narrow:
+ *  - One projector per `schema` across the whole app (collisions detected
+ *    at registration time, first wins).
+ *  - `iterate` is sync + pure — no IO, no embeddings; the indexer owns
+ *    embedding cost.
+ *  - `project` returns null to skip an item (e.g., text too short).
+ */
+export interface RagProjectorOutput {
+  sourceId: string;
+  text: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RagProjector<T = unknown> {
+  /** Top-level state key (FileKey). The projector iterates `state[schema]`. */
+  schema: string;
+  /** ChunkSource the projected items index under. */
+  source: ChunkSource;
+  /** Walk `state[schema]` and yield items. Pure / synchronous. */
+  iterate: (state: unknown) => Iterable<T>;
+  /** Map one item to the indexer payload. Return null to skip. */
+  project: (item: T) => RagProjectorOutput | null;
+}

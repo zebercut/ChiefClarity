@@ -1,9 +1,13 @@
 /**
  * FEAT068 — RAG backfill walker.
+ * FEAT071 — Backfill is now projector-driven. Each skill that owns a
+ * write schema and wants its data discoverable through `info_lookup`
+ * ships a `projector.ts` next to its manifest; the skill registry
+ * registers projectors at boot; this walker iterates the registry
+ * rather than carrying hardcoded knowledge of `state.notes` /
+ * `state.contextMemory`.
  *
- * Walks existing notes / contextMemory.facts / topic pages (when
- * available) and embeds anything not yet indexed. Non-blocking:
- *
+ * Non-blocking:
  *   web      — `requestIdleCallback` chunks; `setTimeout(0)` fallback
  *              for Safari. 5–10 chunks per tick.
  *   Node     — synchronous-ish loop yielded with setImmediate; the
@@ -19,6 +23,7 @@
 import { MODEL_ID } from "../embeddings/provider";
 import { indexEntity } from "./indexer";
 import { getDefaultVectorStore } from "./store-factory";
+import { getAllProjectors } from "./projectorRegistry";
 import type { VectorStore } from "./store";
 import type { AppState } from "../../types";
 import type { RagBackfillStatus, ChunkSource } from "../../types/rag";
@@ -47,23 +52,38 @@ interface QueueEntry {
 }
 
 function buildQueueFromState(state: AppState): QueueEntry[] {
+  // FEAT071 — projector-driven. Each skill that wants its data searchable
+  // ships a projector; backfill iterates the registry. New data sources
+  // plug in by adding a `projector.ts` next to a skill manifest, with no
+  // edits required to this file.
   const queue: QueueEntry[] = [];
-  for (const note of state.notes?.notes ?? []) {
-    if (typeof note.text === "string" && note.text.trim().length >= 5) {
-      queue.push({
-        source: "note",
-        sourceId: String(note.id ?? ""),
-        text: note.text,
-      });
+  for (const projector of getAllProjectors()) {
+    let items: Iterable<unknown>;
+    try {
+      items = projector.iterate(state) ?? [];
+    } catch (err: any) {
+      console.warn(
+        `[rag-backfill] projector.iterate failed for schema "${projector.schema}": ${err?.message ?? err}`
+      );
+      continue;
     }
-  }
-  for (const fact of state.contextMemory?.facts ?? []) {
-    const f = fact as { id?: string; text?: string; topic?: string };
-    if (typeof f.text === "string" && f.text.trim().length >= 5) {
+    for (const item of items) {
+      let projected;
+      try {
+        projected = projector.project(item);
+      } catch (err: any) {
+        console.warn(
+          `[rag-backfill] projector.project failed for schema "${projector.schema}": ${err?.message ?? err}`
+        );
+        continue;
+      }
+      if (!projected) continue;
+      if (!projected.text || projected.text.trim().length < 5) continue;
+      if (!projected.sourceId) continue;
       queue.push({
-        source: "contextMemory",
-        sourceId: String(f.id ?? `${f.topic ?? "fact"}:${queue.length}`),
-        text: [f.text, f.topic].filter(Boolean).join(" "),
+        source: projector.source,
+        sourceId: projected.sourceId,
+        text: projected.text,
       });
     }
   }
