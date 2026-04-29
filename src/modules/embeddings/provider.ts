@@ -25,8 +25,41 @@ async function getPipeline(): Promise<any> {
   if (_pipe) return _pipe;
   if (_loading) return _loading;
   _loading = (async () => {
-    const { pipeline } = await import("@xenova/transformers");
-    _pipe = await pipeline("feature-extraction", MODEL_ID);
+    const xenova: any = await import("@xenova/transformers");
+    const env = xenova.env ?? xenova.default?.env;
+
+    // FEAT070: configure xenova for the SPA-hosted web bundle.
+    // - allowLocalModels=false: the SPA host (Metro / Capacitor WKWebView)
+    //   serves index.html with HTTP 200 for unknown paths, including
+    //   `/models/...`. Without this flag, xenova fetches the local path
+    //   first, JSON.parse(HTML) throws, and the remote fallback is never
+    //   reached.
+    // - useBrowserCache=false: previous runs poisoned the
+    //   `transformers-cache` Cache Storage with HTML 404 responses keyed
+    //   by the local path. xenova's tryCache() reads localPath BEFORE
+    //   the allowLocalModels gate, so even after flipping the flag the
+    //   stale cache entries kept short-circuiting the fetch. Bypassing
+    //   the cache forces a clean network fetch every time. The browser's
+    //   HTTP cache layer still de-duplicates the ~80MB MiniLM weights
+    //   across reloads, so we don't pay the full download repeatedly.
+    if (typeof window !== "undefined" && env) {
+      env.allowLocalModels = false;
+      env.allowRemoteModels = true;
+      env.useBrowserCache = false;
+    }
+
+    // Wipe the poisoned cache once per page load. Idempotent and cheap
+    // when the cache is already clean. Safe in Node (caches is undefined
+    // there — Node falls through env.useBrowserCache anyway).
+    if (typeof caches !== "undefined") {
+      try {
+        await caches.delete("transformers-cache");
+      } catch {
+        // ignore — cache may not exist or origin may forbid access
+      }
+    }
+
+    _pipe = await xenova.pipeline("feature-extraction", MODEL_ID);
     _loading = null;
     return _pipe;
   })();

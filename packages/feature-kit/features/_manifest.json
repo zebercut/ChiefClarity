@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-04-28T15:46:14.082Z",
-  "count": 53,
+  "generatedAt": "2026-04-29T01:54:28.032Z",
+  "count": 54,
   "features": [
     {
       "id": "FEAT021",
@@ -524,6 +524,24 @@
         "calibration",
         "embeddings",
         "real-llm-smoke"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT070",
+      "title": "Unblock xenova transformers on web bundle (Metro alias plus cache poison fix)",
+      "category": "Bug Fix",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "embeddings",
+        "web",
+        "metro",
+        "xenova",
+        "routing"
       ],
       "type": "feature",
       "complexity": null

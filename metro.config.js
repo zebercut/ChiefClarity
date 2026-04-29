@@ -1,6 +1,28 @@
 const { getDefaultConfig } = require("expo/metro-config");
+const path = require("path");
 
 const config = getDefaultConfig(__dirname);
+
+// FEAT070: Alias @xenova/transformers to its prebundled dist file. The
+// package's `main` points at src/transformers.js (ESM source) which uses
+// `import.meta.url` in env.js. Metro treats packages as CJS and emits the
+// runtime error "Cannot use 'import.meta' outside a module" on the web
+// bundle. The prebundled dist/transformers.js is an IIFE that has already
+// resolved import.meta at build time, so it works under Metro.
+const xenovaDist = path.resolve(
+  __dirname,
+  "node_modules/@xenova/transformers/dist/transformers.js"
+);
+const prevResolveRequest = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === "@xenova/transformers") {
+    return { type: "sourceFile", filePath: xenovaDist };
+  }
+  if (prevResolveRequest) {
+    return prevResolveRequest(context, moduleName, platform);
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
 
 // FEAT041/042: Exclude Node-only modules from the web bundle.
 // On web, the api-proxy handles all DB operations.
