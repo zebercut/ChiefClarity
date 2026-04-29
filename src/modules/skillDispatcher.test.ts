@@ -806,6 +806,109 @@ exports.toolSchemas = {
     }
   });
 
+  // ─── FEAT068 — retrievalHook validation hardening ───────────────────────
+  //
+  // The dispatcher must NEVER crash on a malformed `retrievalHook`. Bad
+  // shapes (non-array sources, wrong types, missing required keys) WARN
+  // once and are treated as absent so dispatch proceeds without retrieval.
+
+  section("FEAT068 — retrievalHook validation hardening");
+
+  await test("malformed retrievalHook (sources: 'note' string) does not crash dispatcher", async () => {
+    const tmp = setupTmp();
+    try {
+      // Build a skill with a malformed retrievalHook (sources is a string,
+      // not an array). Hand-write the manifest so writeFixtureSkill's
+      // default shape doesn't apply.
+      const dir = path.join(tmp, "bad_hook_skill");
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, "manifest.json"),
+        JSON.stringify({
+          id: "bad_hook_skill",
+          version: "1.0.0",
+          description: "Skill with malformed retrievalHook",
+          triggerPhrases: ["bad hook test"],
+          structuralTriggers: [],
+          model: "haiku",
+          dataSchemas: { read: [], write: [] },
+          supportsAttachments: false,
+          tools: ["submit"],
+          autoEvaluate: true,
+          tokenBudget: 1000,
+          promptLockedZones: [],
+          surface: null,
+          // INTENTIONALLY MALFORMED: sources is a string, not an array.
+          retrievalHook: { sources: "note", k: 5, minScore: 0.25, minScoreInclude: 0.4 },
+        })
+      );
+      fs.writeFileSync(path.join(dir, "prompt.md"), "Test.");
+      fs.writeFileSync(path.join(dir, "context.ts"), "export const contextRequirements = {};");
+      fs.writeFileSync(
+        path.join(dir, "handlers.ts"),
+        `export async function submit(args, _ctx) { return { success: true, userMessage: "ok" }; }`
+      );
+
+      const registry = await buildFixtureRegistry(tmp);
+      const warns: string[] = [];
+      const originalWarn = console.warn;
+      console.warn = (...args: any[]) => { warns.push(args.join(" ")); };
+      let result: SkillDispatchResult | null;
+      try {
+        result = await dispatchSkill(
+          makeRoute("bad_hook_skill"),
+          "test phrase",
+          {
+            registry,
+            enabledSkillIds: new Set(["bad_hook_skill"]),
+            llmClient: stubLlm("submit", {}),
+          }
+        );
+      } finally {
+        console.warn = originalWarn;
+      }
+      assert.ok(result, "dispatcher returned a result (did not crash)");
+      assert.strictEqual(result.skillId, "bad_hook_skill");
+      // The validator must have logged the malformed-hook WARN at least once.
+      const hookWarn = warns.find((w) =>
+        w.includes("invalid retrievalHook") && w.includes("bad_hook_skill")
+      );
+      assert.ok(
+        hookWarn,
+        "expected WARN about invalid retrievalHook, got: " + JSON.stringify(warns)
+      );
+    } finally {
+      teardownTmp(tmp);
+    }
+  });
+
+  await test("absent retrievalHook → dispatcher proceeds with no retrieval (graceful degradation)", async () => {
+    const tmp = setupTmp();
+    try {
+      // The default fixture skill writeFixtureSkill produces has NO
+      // retrievalHook field — that's the "graceful degradation" case.
+      writeFixtureSkill(tmp, "no_hook_skill");
+      const registry = await buildFixtureRegistry(tmp);
+      const result = await dispatchSkill(
+        makeRoute("no_hook_skill"),
+        "test phrase",
+        {
+          registry,
+          enabledSkillIds: new Set(["no_hook_skill"]),
+          llmClient: stubLlm("submit_priority_ranking", { ranked: [], summary: "ok" }),
+        }
+      );
+      assert.ok(result, "dispatcher returned a result");
+      assert.strictEqual(result.skillId, "no_hook_skill");
+      // No retrieval occurred (no retrievedKnowledge in any context). We
+      // can't introspect the LLM call payload here, but the absence of a
+      // crash + a valid result is the load-bearing assertion.
+      assert.strictEqual(result.degraded, undefined);
+    } finally {
+      teardownTmp(tmp);
+    }
+  });
+
   // ─── Summary ─────────────────────────────────────────────────────────────
 
   console.log(`\n${passed} passed, ${failed} failed`);

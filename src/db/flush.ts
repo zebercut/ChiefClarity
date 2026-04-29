@@ -100,11 +100,17 @@ export async function flushToDb(state: AppState): Promise<void> {
       }
       state._dirty.delete(key);
 
-      // FEAT042: index written entities + run linker (non-blocking)
+      // FEAT042: index written entities + run linker (non-blocking).
+      // FEAT068: same hook also feeds the new RAG VectorStore for the
+      // sources info_lookup reads (`note`, `contextMemory.facts`). Topic
+      // pages will plug in here when FEAT083+ ships their write surface.
+      // Hook stays in flush.ts (not executor.ts) — flush is the single
+      // existing source of truth for "entity persisted, time to embed".
       const srcType = fileKeyToSourceType(key);
       if (srcType && data) {
         indexAndLink(key, srcType, data).catch(() => {});
       }
+      indexRagSources(key, data).catch(() => {});
     } catch (err: any) {
       failures.push({ key, error: err });
       console.error(`[flush-db] write failed for ${key}:`, err?.message || err);
@@ -162,5 +168,44 @@ async function indexAndLink(
     }
   } catch (err: any) {
     console.warn(`[flush-db] indexing failed for ${fileKey}:`, err?.message);
+  }
+}
+
+/**
+ * FEAT068 — Push notes + contextMemory.facts into the RAG VectorStore so
+ * the info_lookup skill can retrieve them. Skips full-collection rewrites
+ * (>20 items) — the backfill walker handles those at boot.
+ *
+ * Non-throwing: relational write integrity is preserved; failures log only.
+ */
+async function indexRagSources(fileKey: string, data: any): Promise<void> {
+  try {
+    if (fileKey === "notes") {
+      const items: Array<{ id?: string; text?: string }> = data.notes || [];
+      if (items.length > 20) return;
+      const { indexEntity } = await import("../modules/rag/indexer");
+      for (const it of items) {
+        const id = String(it.id || "");
+        const text = String(it.text || "");
+        if (!id || text.length < 5) continue;
+        await indexEntity({ source: "note", sourceId: id, text });
+      }
+    } else if (fileKey === "contextMemory") {
+      const facts: Array<{ id?: string; text?: string; topic?: string }> = data.facts || [];
+      if (facts.length > 50) return;
+      const { indexEntity } = await import("../modules/rag/indexer");
+      for (const f of facts) {
+        const id = String(f.id || `${f.topic || "fact"}:${f.text?.slice(0, 16) || ""}`);
+        const text = String(f.text || "");
+        if (text.length < 5) continue;
+        await indexEntity({
+          source: "contextMemory",
+          sourceId: id,
+          text: [f.text, f.topic].filter(Boolean).join(" "),
+        });
+      }
+    }
+  } catch (err: any) {
+    console.warn(`[flush-db] rag indexing failed for ${fileKey}:`, err?.message);
   }
 }

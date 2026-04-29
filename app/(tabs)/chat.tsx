@@ -30,7 +30,6 @@ import type { Nudge } from "../../src/modules/proactiveEngine";
 import { classifyIntentWithFallback, routeToSkill } from "../../src/modules/router";
 import { dispatchSkill } from "../../src/modules/skillDispatcher";
 import { shouldTryV4 } from "../../src/modules/v4Gate";
-import { assembleContext } from "../../src/modules/assembler";
 import { runTriage, learnScopePreference } from "../../src/modules/triage";
 import type { TriageResult } from "../../src/modules/triage";
 import { loadTriageContext } from "../../src/modules/triageLoader";
@@ -501,15 +500,14 @@ export default function ChatScreen() {
         (s as any)._annotations = anns;
       }
 
-      // Stage 2 context: use triage loader for new pipeline, assembler as fallback
+      // Stage 2 context: triage-driven loader picks per-intent context.
+      // FEAT069 retired the regex fast-path, so the legacy assembler
+      // shortcut is gone — every legacy-chain phrase now goes through
+      // loadTriageContext.
       let context: Record<string, unknown>;
       let systemPromptOverride: string | undefined;
 
-      if (triage.fastPath && triage.legacyIntent) {
-        // Fast-path: use old assembler (proven, no regression)
-        context = await assembleContext(intent, phrase, s, conversation);
-      } else {
-        // Triage-driven: load only what triage requested
+      {
         const loaded = await loadTriageContext(triage, phrase, s, conversation);
         context = loaded.context;
         systemPromptOverride = loaded.systemPrompt;

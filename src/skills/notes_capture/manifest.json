@@ -1,7 +1,7 @@
 {
   "id": "notes_capture",
   "version": "1.0.0",
-  "description": "Capture free-form notes and ideas verbatim. Handles 'save this idea', 'add a note', 'remember this', 'write this down', 'jot down', 'note that'. Captures the user's text exactly as said — no paraphrasing, no summarizing, no title extraction. Topic auto-tagging happens server-side in the executor based on the note text.",
+  "description": "Capture a free-form note, idea, or thought verbatim. Handles 'save this idea', 'add a note', 'remember this', 'remember the idea', 'write this down', 'jot down', 'note that', 'capture this thought', 'capture this'. Captures the user's text exactly as said — no paraphrasing, no summarizing, no title extraction. Topic auto-tagging happens server-side in the executor based on the note text.",
   "triggerPhrases": [
     "save this idea",
     "add a note",

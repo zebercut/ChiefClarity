@@ -1,0 +1,35 @@
+{
+  "id": "info_lookup",
+  "version": "1.0.0",
+  "description": "Answer questions and look up information. What is X. Who is Y. Tell me about Z. What about W. What was that thing about Q. What did I say about T. Any info on U. Do you know anything about V. Give me the rundown on R. Summarize what I know about S. Explain X. Definitions, identities, concepts, topics, and recall questions. What is the capital of France. What is React. What is a closure. How does photosynthesis work. Pulls the top semantically-similar chunks from the user's notes, topic pages, and context-memory facts, then cites the source ('from your notes', 'you mentioned in topic Y'). When retrieval is empty for a general-knowledge question (capitals, programming concepts, science topics, definitions), answers from general world knowledge with an explicit 'I don't have personal notes about X, but in general' disclaimer rather than refusing.",
+  "triggerPhrases": [
+    "what do you know about",
+    "tell me about",
+    "what about",
+    "what was that thing",
+    "what did I say about",
+    "any info on",
+    "give me the rundown on",
+    "summarize what I know about",
+    "what can you tell me about",
+    "do you know anything about"
+  ],
+  "structuralTriggers": [],
+  "model": "haiku",
+  "dataSchemas": {
+    "read": [],
+    "write": []
+  },
+  "supportsAttachments": false,
+  "tools": ["submit_info_lookup"],
+  "autoEvaluate": true,
+  "tokenBudget": 4000,
+  "promptLockedZones": [],
+  "surface": null,
+  "retrievalHook": {
+    "sources": ["note", "topic", "contextMemory"],
+    "k": 5,
+    "minScore": 0.25,
+    "minScoreInclude": 0.40
+  }
+}

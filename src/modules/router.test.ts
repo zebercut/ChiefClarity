@@ -298,32 +298,37 @@ async function run(): Promise<void> {
     }
   });
 
-  // Story 2 — Structural triggers
+  // Story 2 — Direct skill routing (FEAT069: structural matcher retired)
 
-  section("Story 2 — Structural triggers");
+  section("Story 2 — Direct skill routing (Step 0)");
 
-  await test("AC 2.1: '/plan' phrase → 'structural' routing, no embedding/LLM call", async () => {
+  // FEAT069 deleted Step 1 (the structural first-token matcher). The
+  // structural-trigger field on manifests is left in place as harmless
+  // metadata, but the router no longer reads it. Slash command UX in
+  // chat.tsx routes via `directSkillId` (Step 0) instead.
+  await test("FEAT069: structural-trigger first-token match no longer routes", async () => {
     const tmp = setupTmp();
     try {
       _resetOrchestratorForTests();
       writeSkill(tmp, "planner", validManifest("planner", { structuralTriggers: ["/plan"] }));
+      writeCache(tmp, { planner: unitVector(384, 0) });
       const registry = await buildFixtureRegistry(tmp);
 
-      let embedderCalled = false;
-      let llmCalled = false;
+      // Phrase starts with "/plan" — the old Step 1 would have returned
+      // routingMethod="structural". FEAT069 removed that step; the phrase
+      // now goes to the embedding step (mocked here with a perfect-match
+      // probe) and returns routingMethod="embedding".
       const result = await routeToSkill(
         { phrase: "/plan today" },
-        {
-          registry,
-          embedder: async () => { embedderCalled = true; return null; },
-          llmClient: { messages: { create: async () => { llmCalled = true; return {}; } } } as any,
-        }
+        { registry, embedder: stubEmbedder(unitVector(384, 0)) }
+      );
+      assert.notStrictEqual(
+        result.routingMethod,
+        "structural",
+        "Step 1 structural matcher must be retired"
       );
       assert.strictEqual(result.skillId, "planner");
-      assert.strictEqual(result.routingMethod, "structural");
-      assert.strictEqual(result.confidence, 1.0);
-      assert.strictEqual(embedderCalled, false, "no embedding when structural matched");
-      assert.strictEqual(llmCalled, false, "no Haiku when structural matched");
+      assert.strictEqual(result.routingMethod, "embedding");
     } finally {
       teardownTmp(tmp);
     }
@@ -616,6 +621,9 @@ async function run(): Promise<void> {
     }
   }
 
+  // FEAT069 — thresholds re-calibrated: HIGH=0.50, FALLBACK=0.10. The
+  // gate test cases below probe scores around the new calibrated bands.
+
   await test("gate: top1=0.85 gap=0.20 → embedding (clear win)", async () => {
     const r = await gateProbe(0.85, 0.65, true);
     assert.strictEqual(r.method, "embedding");
@@ -627,13 +635,13 @@ async function run(): Promise<void> {
     assert.strictEqual(r.method, "haiku");
   });
 
-  await test("gate: top1=0.65 gap=0.20 → haiku (top1 below high threshold)", async () => {
-    const r = await gateProbe(0.65, 0.45, true);
+  await test("gate: top1=0.40 gap=0.20 → haiku (top1 below new HIGH=0.50)", async () => {
+    const r = await gateProbe(0.40, 0.20, true);
     assert.strictEqual(r.method, "haiku");
   });
 
-  await test("gate: top1=0.30 → fallback (below FALLBACK_THRESHOLD)", async () => {
-    const r = await gateProbe(0.30, 0.20, true);
+  await test("gate: top1=0.02 → fallback (below new FALLBACK=0.05)", async () => {
+    const r = await gateProbe(0.02, 0.01, true);
     assert.strictEqual(r.method, "fallback");
     assert.strictEqual(r.skillId, FALLBACK_SKILL_ID);
   });
@@ -854,11 +862,16 @@ async function run(): Promise<void> {
     }
   });
 
-  await test("FEAT066: triage hint disagrees with structural → triage wins, disagreement-warn fires", async () => {
+  // FEAT069: the FEAT066 "disagreement-warn fires on structural disagree"
+  // test was deleted along with Step 1's structural matcher. The
+  // speculative structural lookup inside Step 1a (which fed the warn) is
+  // now dead code and was removed in router.ts.
+
+  await test("FEAT069: triage hint pre-empts even when structural would match", async () => {
+    // Pre-FEAT069 this test asserted that the disagreement-warn fired.
+    // Post-FEAT069 the structural match itself is gone, so we just assert
+    // the triage hint still wins outright with no disagreement-warn.
     const { tmp, registry } = await buildTriageHintFixture({
-      // Add a fixture skill that claims "add" as a structural trigger.
-      // Triage classifies "add a task..." as task_create → task_management.
-      // Structural would pick the conflicting fixture. Triage must win.
       extraSkills: [{ id: "conflicting_skill", structuralTriggers: ["add"] }],
     });
     try {
@@ -875,18 +888,33 @@ async function run(): Promise<void> {
         assert.strictEqual(result.routingMethod, "triage_hint");
         assert.strictEqual(result.skillId, "task_management");
         const disagree = warns.filter((w) =>
-          w.includes("triage_hint pre-empts structural") &&
-          w.includes("task_create") &&
-          w.includes("task_management") &&
-          w.includes("conflicting_skill")
+          w.includes("triage_hint pre-empts structural")
         );
-        assert.strictEqual(disagree.length, 1, "disagreement-warn must fire exactly once");
+        assert.strictEqual(
+          disagree.length,
+          0,
+          "FEAT069 deleted the disagreement-warn; it must NOT fire"
+        );
       } finally {
         console.warn = origWarn;
       }
     } finally {
       teardownTmp(tmp);
     }
+  });
+
+  await test("FEAT069: tryFastPath is no longer exported from triage", async () => {
+    const triageMod = await import("./triage");
+    assert.strictEqual(
+      (triageMod as any).tryFastPath,
+      undefined,
+      "tryFastPath must be deleted"
+    );
+    assert.strictEqual(
+      (triageMod as any).FAST_PATH_MAP,
+      undefined,
+      "FAST_PATH_MAP must be deleted"
+    );
   });
 
   await test("FEAT066: _resetTriageHintWarnCacheForTests resets the cache", async () => {

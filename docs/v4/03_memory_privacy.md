@@ -4,8 +4,22 @@
 
 ## 1. Vector Database
 
-**Stack:** SQLite + sqlite-vss extension + local bge-m3 embeddings (already in `src/modules/embeddings/`)  
-**Location:** `DB_PATH` (local path, never on cloud drive — see CLAUDE.md)  
+**Stack:** Two backends behind one `VectorStore` interface (FEAT068).
+- **Node:** libSQL with the vector extension (`vector_distance_cos`).
+  The `embeddings` table (FEAT042) holds the 384-dim `all-MiniLM-L6-v2`
+  vectors; the `rag_chunks` sibling table (FEAT068 migration
+  `0006_rag_chunks.sql`) holds chunk-level identity.
+- **Web / Capacitor:** IndexedDB (`lifeos_vectors` database, `chunks`
+  object store), loaded into memory on first search and brute-force
+  scanned in JS. Falls back to an in-memory Map with a single WARN if
+  `indexedDB.open` fails.
+
+Embeddings happen on-device (xenova WASM in the browser, onnxruntime in
+Node). Vector data never leaves the device. The model weights download
+from huggingface.co on first use per device and are cached in IndexedDB
+on browsers / on disk on Node.
+
+**Location:** `DB_PATH` (local path, never on cloud drive — see CLAUDE.md)
 **Backup:** Hourly copy to cloud folder via headless runner
 
 ### Roles in v4 (expanded from v3)

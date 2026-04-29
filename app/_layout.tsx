@@ -322,7 +322,25 @@ function applyConfig(c: AppConfig) {
     "calendar_management",
     "inbox_triage",
     "emotional_checkin",
+    "info_lookup",
   ]);
+
+  // FEAT068 — Kick off the RAG backfill non-blocking after the app shell
+  // settles. Loads existing notes + contextMemory facts into the vector
+  // index so info_lookup queries can cite them. requestIdleCallback +
+  // setTimeout(0) fallback is owned by `runBackfill` itself.
+  setTimeout(() => {
+    void (async () => {
+      try {
+        const { loadState } = await import("../src/modules/loader");
+        const { runBackfill } = await import("../src/modules/rag/backfill");
+        const state = await loadState();
+        await runBackfill(state);
+      } catch (err: any) {
+        console.warn(`[layout] RAG backfill failed (non-fatal): ${err?.message ?? err}`);
+      }
+    })();
+  }, 0);
 }
 
 const styles = StyleSheet.create({

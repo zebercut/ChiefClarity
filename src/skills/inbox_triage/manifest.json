@@ -1,7 +1,7 @@
 {
   "id": "inbox_triage",
   "version": "1.0.0",
-  "description": "Process free-form bulk-text dumps that mix tasks, calendar events, notes, recurring rules, observations, and structured facts. Handles the user pasting a multi-item blob into chat ('Task A by Friday. Meeting with Contact A Tue 3pm. Idea: Project X needs a kickoff doc.') and the timer-driven inbox.txt pipeline. Parses every item, deduplicates against existing tasks/events, and emits a multi-file write batch. NEVER creates recurring events as calendar entries — recurring rules become RecurringTasks.",
+  "description": "Process a free-form bulk-text DUMP of multiple mixed items at once. Used when the user pastes a multi-item blob into chat that mixes tasks, calendar events, notes, recurring rules, observations, and structured facts together, or runs the timer-driven inbox.txt pipeline. Handles 'process my inbox', 'process this list', 'process this batch', 'here's a brain dump', 'log all of these at once', 'triage this batch', 'multiple things to capture'. Parses every item, deduplicates against existing tasks/events, and emits a multi-file write batch. ONLY for bulk multi-item input — NOT for single-item creation, single-item lookup, single-item planning, or one-line questions. NEVER creates recurring events as calendar entries — recurring rules become RecurringTasks.",
   "triggerPhrases": [
     "process my inbox",
     "here's a brain dump",

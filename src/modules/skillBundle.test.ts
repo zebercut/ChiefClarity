@@ -53,6 +53,7 @@ const EXPECTED_SKILL_IDS = [
   "emotional_checkin",
   "general_assistant",
   "inbox_triage",
+  "info_lookup",
   "notes_capture",
   "priority_planning",
   "task_management",
@@ -63,12 +64,12 @@ const EXPECTED_SKILL_IDS = [
 async function run(): Promise<void> {
   section("FEAT064 — SKILL_BUNDLE shape contract");
 
-  await test("all 7 expected skill ids are present in SKILL_BUNDLE", () => {
+  await test("all 8 expected skill ids are present in SKILL_BUNDLE", () => {
     const ids = Object.keys(SKILL_BUNDLE).sort();
     assert.deepStrictEqual(
       ids,
       EXPECTED_SKILL_IDS,
-      `expected exactly the 7 migrated skills, got: ${ids.join(", ")}`
+      `expected exactly the 8 migrated skills, got: ${ids.join(", ")}`
     );
   });
 
@@ -167,7 +168,7 @@ async function run(): Promise<void> {
 
   section("FEAT064 — Dual-loader parity (bundle ↔ fs) skill set");
 
-  await test("bundle-loaded registry produces the same 7-skill id set as the live-reload fs path", async () => {
+  await test("bundle-loaded registry produces the same 8-skill id set as the live-reload fs path", async () => {
     // Default load (no skillsDir) reads from the bundle.
     _resetSkillRegistryForTests();
     const bundleReg = await loadSkillRegistry();

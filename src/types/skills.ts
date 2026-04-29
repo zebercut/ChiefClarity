@@ -13,6 +13,7 @@
  */
 
 import type Anthropic from "@anthropic-ai/sdk";
+import type { RetrievalHook } from "./rag";
 
 /**
  * FEAT065 — Project-owned alias for the Anthropic SDK tool schema shape.
@@ -102,6 +103,14 @@ export interface SkillManifest {
   promptLockedZones: string[];
   /** Optional UI surface contributed by this skill. */
   surface: SkillSurface | null;
+  /**
+   * FEAT068 — Optional declarative pre-LLM retrieval policy. When set, the
+   * dispatcher embeds the user phrase and runs `retrieveTopK` against the
+   * default `VectorStore` between `resolveContext` and the LLM call,
+   * injecting results under `retrievedKnowledge`. Bad shapes are rejected
+   * by the registry and treated as absent (no crash).
+   */
+  retrievalHook?: RetrievalHook;
 }
 
 export interface LockedZone {

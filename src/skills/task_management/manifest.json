@@ -1,7 +1,7 @@
 {
   "id": "task_management",
   "version": "1.0.0",
-  "description": "Create, update, query, and delete tasks. Handles 'add a task', 'mark X done', 'show my tasks', 'set priority on Y', 'delete the task'. Default priority medium unless urgency is signaled. Always references existing tasks by id from tasksIndex.",
+  "description": "Create, update, query, and delete a single task or to-do item. Handles 'add a task', 'create a todo', 'remind me to call X', 'remind me to follow up', 'mark X done', 'show my tasks', 'show my open tasks', 'what tasks do I have', 'set priority on Y', 'delete the task', 'cancel the task', 'tasks about'. Default priority medium unless urgency is signaled. Always references existing tasks by id from tasksIndex.",
   "triggerPhrases": [
     "add a task",
     "create a todo",
