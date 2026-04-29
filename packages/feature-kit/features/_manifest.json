@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-04-29T03:08:41.690Z",
-  "count": 58,
+  "generatedAt": "2026-04-29T03:17:59.315Z",
+  "count": 59,
   "features": [
     {
       "id": "FEAT021",
@@ -611,6 +611,23 @@
         "info_lookup",
         "retrieval",
         "calendar"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT075",
+      "title": "info_lookup prompt judgment-based mode A B no fixed threshold",
+      "category": "Bug Fix",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "info_lookup",
+        "prompt",
+        "rag",
+        "calibration"
       ],
       "type": "feature",
       "complexity": null
