@@ -87,7 +87,7 @@ then for EVERY write you produce, set the "sourceNoteId" field on the write to t
 - `calendar`: `{ action: "add", data: { title, datetime, durationMinutes, status: "scheduled", type, priority, notes, relatedInbox: [] } }`. Use ISO datetime (YYYY-MM-DDTHH:MM:SS). Default `durationMinutes` to 60. **Never** set `recurring`/`recurrence`/`recurrenceDay`.
 - `notes`: `{ action: "add", data: { text, status: "pending" } }`. The handler fills the rest.
 - `contextMemory`: `{ action: "add", data: { facts: [{ text, topic, date }] } }`. Topic from `existingTopicHints` or null.
-- `userObservations`: `{ action: "add", data: { _arrayKey: "emotionalState", text, ...fields } }`. The `_arrayKey` tells the executor which sub-array to append to (e.g. "emotionalState").
+- `userObservations`: `{ action: "add", data: { _arrayKey: "emotionalState", observation: "<what you observed>", date: "YYYY-MM-DD" } }`. The `_arrayKey` tells the executor which sub-array to append to (e.g. "emotionalState"). The field is `observation` (not `text`).
 - `recurringTasks`: `{ action: "add", data: { title, schedule: { type: "daily" | "weekly" | "weekdays", days: ["mon",...], time?: "HH:MM" }, category, priority, duration, notes, active: true } }`.
 
 ## Profile / lifestyle / OKR updates

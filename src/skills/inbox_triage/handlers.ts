@@ -245,6 +245,17 @@ function normalizeWrite(
       return null;
     }
   }
+  // Drop userObservations adds with no observation text — protects the
+  // DB layer, which would otherwise throw on `undefined` (or insert an
+  // empty row). Coercion in fillObservationDefaults handles the `text`
+  // → `observation` rename; this guard catches the truly-empty case.
+  if (file === "userObservations" && w.action === "add") {
+    const observation = (data as { observation?: unknown }).observation;
+    if (typeof observation !== "string" || observation.length === 0) {
+      console.warn("[inbox_triage] dropped userObservations add with no observation text");
+      return null;
+    }
+  }
   // Drop recurringTasks adds without a title or schedule.
   if (file === "recurringTasks" && w.action === "add") {
     const title = (data as { title?: unknown }).title;
@@ -326,9 +337,29 @@ export function fillObservationDefaults(input: Record<string, unknown>): Record<
   // userObservations writes target a named sub-array via `_arrayKey`
   // (e.g. "emotionalState"). Default to "emotionalState" if unset, since
   // bulk-input legacy emits emotional/mood logs there.
+  //
+  // DB schema requires `observation: string` and `date: string` — passing
+  // undefined to libSQL throws "undefined cannot be passed as argument to
+  // the database". Coerce the common LLM drift (`text` instead of
+  // `observation`) and guarantee both fields are non-undefined strings.
+  const arrayKey = typeof input._arrayKey === "string" ? input._arrayKey : "emotionalState";
+  const observation =
+    typeof input.observation === "string"
+      ? input.observation
+      : typeof input.text === "string"
+        ? input.text
+        : "";
+  const date =
+    typeof input.date === "string"
+      ? input.date
+      : typeof input.firstSeen === "string"
+        ? input.firstSeen
+        : "";
   return {
     ...input,
-    _arrayKey: typeof input._arrayKey === "string" ? input._arrayKey : "emotionalState",
+    _arrayKey: arrayKey,
+    observation,
+    date,
   };
 }
 

@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-04-29T03:17:59.315Z",
-  "count": 59,
+  "generatedAt": "2026-05-11T19:15:28.253Z",
+  "count": 60,
   "features": [
     {
       "id": "FEAT021",
@@ -628,6 +628,22 @@
         "prompt",
         "rag",
         "calibration"
+      ],
+      "type": "feature",
+      "complexity": null
+    },
+    {
+      "id": "FEAT076",
+      "title": "inbox_triage userObservations write coercion — fix undefined DB arg",
+      "category": "Bug Fix",
+      "moscow": "MUST",
+      "priority": 1,
+      "status": "Done",
+      "release": "v2.02",
+      "tags": [
+        "inbox_triage",
+        "userObservations",
+        "db"
       ],
       "type": "feature",
       "complexity": null

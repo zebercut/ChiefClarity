@@ -1,0 +1,23 @@
+{
+  "id": "FEAT076",
+  "title": "inbox_triage userObservations write coercion — fix undefined DB arg",
+  "category": "Bug Fix",
+  "moscow": "MUST",
+  "priority": 1,
+  "status": "Done",
+  "release": "v2.02",
+  "createdAt": "2026-05-11T19:15:01.616Z",
+  "updatedAt": "2026-05-11T19:15:28.219Z",
+  "tags": [
+    "inbox_triage",
+    "userObservations",
+    "db"
+  ],
+  "okrLink": null,
+  "type": "feature",
+  "description": null,
+  "complexity": null,
+  "notes": null,
+  "specFile": null,
+  "githubIssue": null
+}
